@@ -4,6 +4,7 @@ import {
 	IsNumber,
 	ValidateNested,
 	IsObject,
+	Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -62,4 +63,39 @@ export class UpdateTripDto {
 	@IsOptional()
 	@IsNumber()
 	actualDurationMin?: number;
+
+	@ApiPropertyOptional({
+		description: 'Coordenadas de onde o pedido foi feito',
+		type: CoordsDto,
+	})
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CoordsDto)
+	@IsObject()
+	requestLocation?: CoordsDto;
+
+	@ApiPropertyOptional({
+		example: 500.0,
+		description: 'Troco para pagamento em dinheiro',
+	})
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	changeFor?: number;
+
+	@ApiPropertyOptional({
+		example: 'uuid-do-endereco',
+		description: 'ID do endereço de recolha salvo do utilizador',
+	})
+	@IsOptional()
+	@IsString()
+	pickupUserAddressId?: string;
+
+	@ApiPropertyOptional({
+		example: 'uuid-do-endereco',
+		description: 'ID do endereço de destino salvo do utilizador',
+	})
+	@IsOptional()
+	@IsString()
+	dropoffUserAddressId?: string;
 }

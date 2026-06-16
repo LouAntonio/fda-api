@@ -22,6 +22,7 @@ import { ConfirmPhoneDto } from './dto/confirm-phone.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UserQueryDto } from './dto/user-query.dto';
+import { CreatePushTokenDto } from './dto/create-push-token.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
 
 const defaultUserSelect = {
@@ -812,5 +813,65 @@ export class UsersService {
 		});
 
 		return tokens;
+	}
+
+	async createPushToken(userId: string, dto: CreatePushTokenDto) {
+		const user = await this.prisma.client.user.findUnique({
+			where: { id: userId },
+			select: { id: true },
+		});
+
+		if (!user) {
+			throw new NotFoundException('Utilizador não encontrado');
+		}
+
+		const existing = await this.prisma.client.pushToken.findUnique({
+			where: { token: dto.token },
+		});
+
+		if (existing) {
+			if (existing.userId !== userId) {
+				await this.prisma.client.pushToken.update({
+					where: { id: existing.id },
+					data: { userId },
+				});
+			}
+			return {
+				msg: 'Token já registado',
+				data: existing,
+			};
+		}
+
+		const token = await this.prisma.client.pushToken.create({
+			data: {
+				id: uuidv7(),
+				userId,
+				token: dto.token,
+				deviceType: dto.deviceType ?? null,
+			},
+		});
+
+		return {
+			msg: 'Token registado com sucesso',
+			data: token,
+		};
+	}
+
+	async removePushToken(userId: string, tokenId: string) {
+		const token = await this.prisma.client.pushToken.findUnique({
+			where: { id: tokenId },
+		});
+
+		if (!token || token.userId !== userId) {
+			throw new NotFoundException('Token não encontrado');
+		}
+
+		await this.prisma.client.pushToken.delete({
+			where: { id: tokenId },
+		});
+
+		return {
+			msg: 'Token removido com sucesso',
+		};
 	}
 }

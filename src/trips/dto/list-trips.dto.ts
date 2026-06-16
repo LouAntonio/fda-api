@@ -8,7 +8,7 @@ import {
 	IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TripStatus, ServiceType, PaymentStatus } from '@prisma/client';
+import { TripStatus, ServiceType, PaymentStatus, DeliveryStatus } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ListTripsDto {
@@ -53,6 +53,14 @@ export class ListTripsDto {
 	@IsOptional()
 	@IsEnum(PaymentStatus)
 	paymentStatus?: PaymentStatus;
+
+	@ApiPropertyOptional({
+		enum: DeliveryStatus,
+		description: 'Filtrar por estado de entrega',
+	})
+	@IsOptional()
+	@IsEnum(DeliveryStatus)
+	deliveryStatus?: DeliveryStatus;
 
 	@ApiPropertyOptional({ description: 'Filtrar por cliente (ID)' })
 	@IsOptional()

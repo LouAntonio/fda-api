@@ -11,6 +11,7 @@ import {
 	UserRole,
 	ServiceType,
 	VehicleType,
+	DeliveryStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -19,6 +20,7 @@ import { CreateTripDto, CoordsDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
+import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripStatsDto } from './dto/trip-stats.dto';
@@ -26,8 +28,10 @@ import { coordsToWkt, distanceInKm } from '../common/helpers/coords.helper';
 
 const defaultTripSelect = {
 	id: true,
+	idempotencyKey: true,
 	status: true,
 	serviceType: true,
+	deliveryStatus: true,
 	pickupAddress: true,
 	dropoffAddress: true,
 	estimatedDistanceKm: true,
@@ -38,6 +42,7 @@ const defaultTripSelect = {
 	serviceFee: true,
 	driverEarnings: true,
 	totalPrice: true,
+	changeFor: true,
 	discountAmount: true,
 	paymentMethod: true,
 	paymentStatus: true,
@@ -73,6 +78,13 @@ const statusEventMap: Record<TripStatus, TripEventType> = {
 	[TripStatus.CANCELLED]: TripEventType.TRIP_CANCELLED,
 };
 
+const deliveryStatusTransitions: Record<DeliveryStatus, DeliveryStatus[]> = {
+	[DeliveryStatus.WAITING_PICKUP]: [DeliveryStatus.PICKED_UP],
+	[DeliveryStatus.PICKED_UP]: [DeliveryStatus.IN_TRANSIT],
+	[DeliveryStatus.IN_TRANSIT]: [DeliveryStatus.DELIVERED],
+	[DeliveryStatus.DELIVERED]: [],
+};
+
 const statusTimestampField: Record<TripStatus, string> = {
 	[TripStatus.REQUESTED]: 'requestedAt',
 	[TripStatus.ACCEPTED]: 'acceptedAt',
@@ -103,6 +115,18 @@ export class TripsService {
 			clientId = dto['clientId'] as string;
 		}
 
+		if (dto.idempotencyKey) {
+			const existing = await (this.prisma.client.trip as any).findUnique({
+				where: { idempotencyKey: dto.idempotencyKey },
+				select: { id: true },
+			});
+			if (existing) {
+				throw new BadRequestException(
+					'Já existe uma viagem com esta chave de idempotência',
+				);
+			}
+		}
+
 		if (dto.serviceType === ServiceType.DELIVERY && !dto.deliveryDetails) {
 			throw new BadRequestException(
 				'Detalhes de entrega são obrigatórios para serviço de entrega',
@@ -112,44 +136,73 @@ export class TripsService {
 		const estimate = await this.estimatePrice({
 			pickupCoords: dto.pickupCoords,
 			dropoffCoords: dto.dropoffCoords,
-			vehicleType: VehicleType.MOTO,
+			vehicleType: dto.vehicleType,
 			couponCode: dto.couponCode,
 			userId: clientId,
 		});
 
+		const tripData: Record<string, unknown> = {
+			id: uuidv7(),
+			clientId,
+			serviceType: dto.serviceType,
+			status: TripStatus.REQUESTED,
+			pickupCoords: coordsToWkt(
+				dto.pickupCoords.lat,
+				dto.pickupCoords.lng,
+			),
+			dropoffCoords: coordsToWkt(
+				dto.dropoffCoords.lat,
+				dto.dropoffCoords.lng,
+			),
+			pickupAddress: dto.pickupAddress,
+			pickupReference: dto.pickupReference ?? null,
+			dropoffAddress: dto.dropoffAddress,
+			dropoffReference: dto.dropoffReference ?? null,
+			paymentMethod: dto.paymentMethod,
+			estimatedDistanceKm: estimate.estimatedDistanceKm,
+			estimatedDurationMin: estimate.estimatedDurationMin,
+			priceConfigId: estimate.priceConfigId,
+			pickupZoneId: estimate.pickupZoneId,
+			dropoffZoneId: estimate.dropoffZoneId,
+			surgeMultiplierApplied: estimate.surgeMultiplierApplied,
+			subtotal: estimate.subtotal,
+			ivaAmount: estimate.ivaAmount,
+			serviceFee: estimate.serviceFee,
+			driverEarnings: estimate.driverEarnings,
+			totalPrice: estimate.totalPrice,
+			discountAmount: estimate.discountAmount,
+			couponId: estimate.couponId ?? null,
+		};
+
+		if (dto.idempotencyKey) {
+			tripData.idempotencyKey = dto.idempotencyKey;
+		}
+
+		if (dto.requestLocation) {
+			tripData.requestLocation = coordsToWkt(
+				dto.requestLocation.lat,
+				dto.requestLocation.lng,
+			);
+		}
+
+		if (dto.changeFor !== undefined) {
+			tripData.changeFor = dto.changeFor;
+		}
+
+		if (dto.pickupUserAddressId) {
+			tripData.pickupUserAddressId = dto.pickupUserAddressId;
+		}
+
+		if (dto.dropoffUserAddressId) {
+			tripData.dropoffUserAddressId = dto.dropoffUserAddressId;
+		}
+
+		if (dto.serviceType === ServiceType.DELIVERY) {
+			tripData.deliveryStatus = DeliveryStatus.WAITING_PICKUP;
+		}
+
 		const trip = await (this.prisma.client.trip as any).create({
-			data: {
-				id: uuidv7(),
-				clientId,
-				serviceType: dto.serviceType,
-				status: TripStatus.REQUESTED,
-				pickupCoords: coordsToWkt(
-					dto.pickupCoords.lat,
-					dto.pickupCoords.lng,
-				),
-				dropoffCoords: coordsToWkt(
-					dto.dropoffCoords.lat,
-					dto.dropoffCoords.lng,
-				),
-				pickupAddress: dto.pickupAddress,
-				pickupReference: dto.pickupReference ?? null,
-				dropoffAddress: dto.dropoffAddress,
-				dropoffReference: dto.dropoffReference ?? null,
-				paymentMethod: dto.paymentMethod,
-				estimatedDistanceKm: estimate.estimatedDistanceKm,
-				estimatedDurationMin: estimate.estimatedDurationMin,
-				priceConfigId: estimate.priceConfigId,
-				pickupZoneId: estimate.pickupZoneId,
-				dropoffZoneId: estimate.dropoffZoneId,
-				surgeMultiplierApplied: estimate.surgeMultiplierApplied,
-				subtotal: estimate.subtotal,
-				ivaAmount: estimate.ivaAmount,
-				serviceFee: estimate.serviceFee,
-				driverEarnings: estimate.driverEarnings,
-				totalPrice: estimate.totalPrice,
-				discountAmount: estimate.discountAmount,
-				couponId: estimate.couponId ?? null,
-			},
+			data: tripData,
 			select: {
 				...defaultTripSelect,
 				client: {
@@ -224,6 +277,7 @@ export class TripsService {
 		if (dto.status) where.status = dto.status;
 		if (dto.serviceType) where.serviceType = dto.serviceType;
 		if (dto.paymentStatus) where.paymentStatus = dto.paymentStatus;
+		if (dto.deliveryStatus) where.deliveryStatus = dto.deliveryStatus;
 		if (dto.clientId && userRole !== UserRole.CLIENT)
 			where.clientId = dto.clientId;
 		if (dto.driverId && userRole !== UserRole.DRIVER)
@@ -317,6 +371,9 @@ export class TripsService {
 				...defaultTripSelect,
 				pickupCoords: true,
 				dropoffCoords: true,
+				requestLocation: true,
+				pickupUserAddressId: true,
+				dropoffUserAddressId: true,
 				client: {
 					select: {
 						id: true,
@@ -460,6 +517,21 @@ export class TripsService {
 			data.actualDistanceKm = dto.actualDistanceKm;
 		if (dto.actualDurationMin !== undefined)
 			data.actualDurationMin = dto.actualDurationMin;
+		if (dto.requestLocation) {
+			data.requestLocation = coordsToWkt(
+				dto.requestLocation.lat,
+				dto.requestLocation.lng,
+			);
+		}
+		if (dto.changeFor !== undefined) {
+			data.changeFor = dto.changeFor;
+		}
+		if (dto.pickupUserAddressId !== undefined) {
+			data.pickupUserAddressId = dto.pickupUserAddressId;
+		}
+		if (dto.dropoffUserAddressId !== undefined) {
+			data.dropoffUserAddressId = dto.dropoffUserAddressId;
+		}
 
 		if (Object.keys(data).length === 0) {
 			throw new BadRequestException('Nenhum dado para atualizar');
@@ -555,6 +627,25 @@ export class TripsService {
 			},
 		});
 
+		if (nextStatus === TripStatus.COMPLETED && trip.driverId) {
+			await this.prisma.client.driver.update({
+				where: { id: trip.driverId },
+				data: {
+					completedTripsCount: { increment: 1 },
+					availableBalance: { increment: Number(trip.driverEarnings ?? 0) },
+				},
+			});
+		}
+
+		if (nextStatus === TripStatus.CANCELLED && trip.driverId) {
+			await this.prisma.client.driver.update({
+				where: { id: trip.driverId },
+				data: {
+					cancelledTripsCount: { increment: 1 },
+				},
+			});
+		}
+
 		await this.createTripEvent(id, statusEventMap[nextStatus], actorUserId);
 
 		this.logger.log(
@@ -564,6 +655,67 @@ export class TripsService {
 
 		return updated;
 		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+	}
+
+	async updateDeliveryStatus(
+		id: string,
+		dto: UpdateDeliveryStatusDto,
+		actorUserId: string,
+	) {
+		const trip = await (this.prisma.client.trip as any).findUnique({
+			where: { id },
+		});
+
+		if (!trip || trip.deletedAt) {
+			throw new NotFoundException('Viagem não encontrada');
+		}
+
+		if (trip.serviceType !== ServiceType.DELIVERY) {
+			throw new BadRequestException(
+				'Esta viagem não é do tipo entrega',
+			);
+		}
+
+		const currentDeliveryStatus = trip.deliveryStatus as DeliveryStatus | null;
+		const nextDeliveryStatus = dto.deliveryStatus;
+
+		if (!currentDeliveryStatus) {
+			throw new BadRequestException(
+				'Estado de entrega não definido para esta viagem',
+			);
+		}
+
+		const allowedNext = deliveryStatusTransitions[currentDeliveryStatus];
+		if (!allowedNext?.includes(nextDeliveryStatus)) {
+			throw new BadRequestException(
+				`Transição inválida: ${currentDeliveryStatus} -> ${nextDeliveryStatus}`,
+			);
+		}
+
+		const updated = await (this.prisma.client.trip as any).update({
+			where: { id },
+			data: { deliveryStatus: nextDeliveryStatus },
+			select: defaultTripSelect,
+		});
+
+		await this.createTripEvent(
+			id,
+			nextDeliveryStatus === DeliveryStatus.PICKED_UP
+				? TripEventType.PICKUP_CONFIRMED
+				: nextDeliveryStatus === DeliveryStatus.IN_TRANSIT
+					? TripEventType.LOCATION_UPDATED
+					: nextDeliveryStatus === DeliveryStatus.DELIVERED
+						? TripEventType.ARRIVED_DROPOFF
+						: TripEventType.TRIP_REQUESTED,
+			actorUserId,
+		);
+
+		this.logger.log(
+			`Trip ${id} delivery status: ${currentDeliveryStatus} -> ${nextDeliveryStatus}`,
+			'TripsService',
+		);
+
+		return updated;
 	}
 
 	async cancel(
@@ -620,6 +772,15 @@ export class TripsService {
 			},
 			select: defaultTripSelect,
 		});
+
+		if (trip.driverId) {
+			await this.prisma.client.driver.update({
+				where: { id: trip.driverId },
+				data: {
+					cancelledTripsCount: { increment: 1 },
+				},
+			});
+		}
 
 		await this.createTripEvent(id, TripEventType.TRIP_CANCELLED, userId);
 

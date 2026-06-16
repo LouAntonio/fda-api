@@ -22,6 +22,7 @@ import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
+import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripStatsDto } from './dto/trip-stats.dto';
@@ -138,6 +139,29 @@ export class TripsController {
 	) {
 		const user = req.user as { id: string; role: UserRole };
 		return this.tripsService.updateStatus(id, dto, user.id, user.role);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Atualizar estado da entrega',
+		description:
+			'Avança o estado da entrega (WAITING_PICKUP -> PICKED_UP -> IN_TRANSIT -> DELIVERED)',
+	})
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Patch(':id/delivery-status')
+	@Roles(
+		UserRole.DRIVER,
+		UserRole.SUPER_ADMIN,
+		UserRole.OPERATIONS,
+		UserRole.SUPPORT,
+	)
+	updateDeliveryStatus(
+		@Param('id') id: string,
+		@Body(ValidationPipe) dto: UpdateDeliveryStatusDto,
+		@Req() req: Request,
+	) {
+		const user = req.user as { id: string };
+		return this.tripsService.updateDeliveryStatus(id, dto, user.id);
 	}
 
 	@ApiBearerAuth()

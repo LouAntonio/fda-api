@@ -30,6 +30,7 @@ import { ConfirmPhoneDto } from './dto/confirm-phone.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UserQueryDto } from './dto/user-query.dto';
+import { CreatePushTokenDto } from './dto/create-push-token.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -284,5 +285,31 @@ export class UsersController {
 	@Get(':id/push-tokens')
 	listPushTokens(@Param('id') id: string) {
 		return this.usersService.listPushTokens(id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Registar push token',
+		description: 'Regista um novo push token para o utilizador',
+	})
+	@Post(':id/push-tokens')
+	createPushToken(
+		@Param('id') id: string,
+		@Body(ValidationPipe) dto: CreatePushTokenDto,
+	) {
+		return this.usersService.createPushToken(id, dto);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Remover push token',
+		description: 'Remove um push token do utilizador',
+	})
+	@Delete(':id/push-tokens/:tokenId')
+	removePushToken(
+		@Param('id') id: string,
+		@Param('tokenId') tokenId: string,
+	) {
+		return this.usersService.removePushToken(id, tokenId);
 	}
 }

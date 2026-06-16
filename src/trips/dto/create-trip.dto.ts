@@ -5,10 +5,11 @@ import {
 	IsNumber,
 	ValidateNested,
 	IsObject,
+	Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ServiceType, PaymentMethod } from '@prisma/client';
+import { ServiceType, PaymentMethod, VehicleType } from '@prisma/client';
 
 export class CoordsDto {
 	@ApiProperty({ example: -8.6489, description: 'Latitude' })
@@ -128,4 +129,54 @@ export class CreateTripDto {
 	@Type(() => DeliveryDetailsDto)
 	@IsObject()
 	deliveryDetails?: DeliveryDetailsDto;
+
+	@ApiPropertyOptional({
+		example: '550e8400-e29b-41d4-a716-446655440000',
+		description: 'Chave de idempotência para evitar duplicação',
+	})
+	@IsOptional()
+	@IsString()
+	idempotencyKey?: string;
+
+	@ApiProperty({
+		enum: VehicleType,
+		description: 'Tipo de veículo para a viagem',
+	})
+	@IsEnum(VehicleType)
+	vehicleType!: VehicleType;
+
+	@ApiPropertyOptional({
+		description: 'Coordenadas de onde o pedido foi feito',
+		type: CoordsDto,
+	})
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CoordsDto)
+	@IsObject()
+	requestLocation?: CoordsDto;
+
+	@ApiPropertyOptional({
+		example: 500.0,
+		description: 'Troco para pagamento em dinheiro',
+	})
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	changeFor?: number;
+
+	@ApiPropertyOptional({
+		example: 'uuid-do-endereco',
+		description: 'ID do endereço de recolha salvo do utilizador',
+	})
+	@IsOptional()
+	@IsString()
+	pickupUserAddressId?: string;
+
+	@ApiPropertyOptional({
+		example: 'uuid-do-endereco',
+		description: 'ID do endereço de destino salvo do utilizador',
+	})
+	@IsOptional()
+	@IsString()
+	dropoffUserAddressId?: string;
 }

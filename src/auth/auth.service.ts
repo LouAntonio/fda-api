@@ -428,9 +428,10 @@ export class AuthService {
 	}
 
 	async updateProfile(userId: string, dto: UpdateProfileDto) {
-		const data: Record<string, string> = {};
+		const data: Record<string, string | undefined> = {};
 
 		if (dto.name !== undefined) data.name = dto.name;
+		if (dto.surname !== undefined) data.surname = dto.surname;
 		if (dto.phoneNumber !== undefined) data.phoneNumber = dto.phoneNumber;
 
 		if (dto.image !== undefined) {
