@@ -12,6 +12,8 @@ import { CouponsModule } from './coupons/coupons.module';
 import { DriversModule } from './drivers/drivers.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { FleetsModule } from './fleets/fleets.module';
+import { PriceConfigModule } from './price-config/price-config.module';
+import { ZonesModule } from './zones/zones.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -36,6 +38,8 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		DriversModule,
 		VehiclesModule,
 		FleetsModule,
+		PriceConfigModule,
+		ZonesModule,
 	],
 	controllers: [AppController],
 	providers: [
