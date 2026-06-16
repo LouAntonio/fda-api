@@ -14,6 +14,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
 import { FleetsModule } from './fleets/fleets.module';
 import { PriceConfigModule } from './price-config/price-config.module';
 import { ZonesModule } from './zones/zones.module';
+import { TripsModule } from './trips/trips.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -40,6 +41,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		FleetsModule,
 		PriceConfigModule,
 		ZonesModule,
+		TripsModule,
 	],
 	controllers: [AppController],
 	providers: [
