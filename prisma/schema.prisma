@@ -1,0 +1,608 @@
+generator client {
+	provider        = "prisma-client-js"
+	previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+	provider   = "postgresql"
+	extensions = [postgis]
+}
+
+model User {
+	id                    String                 @id @db.Uuid
+	name                  String
+	email                 String?                @unique
+	phoneNumber           String?                @unique
+	emailVerified         Boolean                @default(false)
+	image                 String?
+	role                  UserRole               @default(CLIENT)
+	status                UserStatus             @default(ACTIVE)
+	bannedUntil           DateTime?
+	banMotive             String?
+	emergencyContactName  String?
+	emergencyContactPhone String?
+	deviceId              String?
+	lastLoginIp           String?
+	createdAt             DateTime               @default(now())
+	updatedAt             DateTime               @updatedAt
+	deletedAt             DateTime?
+	phoneNumberVerified   Boolean                @default(false)
+	surname               String?
+	accounts              Account[]
+	auditLogs             AuditLog[]
+	driverProfile         Driver?
+	financialTransactions FinancialTransaction[]
+	ownedFleets           Fleet[]
+	pushTokens            PushToken[]
+	reviewsGiven          Review[]               @relation("ReviewsFrom")
+	reviewsRecv           Review[]               @relation("ReviewsTo")
+	sessions              Session[]
+	tripsAsClient         Trip[]                 @relation("ClientTrips")
+	addresses             UserAddress[]
+	verifications         Verification[]
+
+	@@index([role])
+	@@index([phoneNumber])
+	@@index([deletedAt])
+}
+
+model Session {
+	id        String   @id
+	userId    String   @db.Uuid
+	token     String   @unique
+	expiresAt DateTime
+	ipAddress String?
+	userAgent String?
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@index([userId])
+}
+
+model Account {
+	id                    String    @id @db.Uuid
+	userId                String    @db.Uuid
+	accountId             String?
+	providerId            String
+	accessToken           String?
+	refreshToken          String?
+	idToken               String?
+	accessTokenExpiresAt  DateTime?
+	refreshTokenExpiresAt DateTime?
+	scope                 String?
+	password              String?
+	createdAt             DateTime  @default(now())
+	updatedAt             DateTime  @updatedAt
+	user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@index([userId])
+}
+
+model Verification {
+	id         String    @id
+	identifier String
+	value      String
+	expiresAt  DateTime
+	userId     String?   @db.Uuid
+	createdAt  DateTime? @default(now())
+	updatedAt  DateTime? @updatedAt
+	user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@unique([identifier, value])
+	@@index([userId])
+}
+
+model PushToken {
+	id         String   @id @db.Uuid
+	userId     String   @db.Uuid
+	token      String   @unique
+	deviceType String?
+	createdAt  DateTime @default(now())
+	user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@index([userId])
+}
+
+model UserAddress {
+	id          String                   @id @db.Uuid
+	userId      String                   @db.Uuid
+	label       AddressLabel             @default(OTHER)
+	customLabel String?
+	address     String
+	reference   String?
+	location    Unsupported("geography")
+	createdAt   DateTime                 @default(now())
+	updatedAt   DateTime                 @updatedAt
+	user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@index([userId])
+	@@index([location], type: Gist)
+}
+
+model Coupon {
+	id            String       @id @db.Uuid
+	code          String       @unique
+	description   String?
+	discountType  DiscountType @default(PERCENTAGE)
+	discountValue Decimal      @db.Decimal(12, 2)
+	maxDiscount   Decimal?     @db.Decimal(12, 2)
+	minTripAmount Decimal?     @db.Decimal(12, 2)
+	startsAt      DateTime?
+	expiresAt     DateTime?
+	usageLimit    Int?
+	usageCount    Int          @default(0)
+	limitPerUser  Int          @default(1)
+	isActive      Boolean      @default(true)
+	createdAt     DateTime     @default(now())
+	updatedAt     DateTime     @updatedAt
+	trips         Trip[]
+
+	@@index([code])
+	@@index([isActive])
+}
+
+model Driver {
+	id                    String                   @id @db.Uuid
+	userId                String                   @unique @db.Uuid
+	complianceStatus      DriverComplianceStatus   @default(PENDING)
+	availability          DriverAvailabilityStatus @default(OFFLINE)
+	biNumber              String                   @unique
+	licenseNumber         String                   @unique
+	ratingAverage         Float                    @default(5.0)
+	ratingCount           Int                      @default(0)
+	completedTripsCount   Int                      @default(0)
+	cancelledTripsCount   Int                      @default(0)
+	availableBalance      Decimal                  @default(0) @db.Decimal(12, 2)
+	pendingBalance        Decimal                  @default(0) @db.Decimal(12, 2)
+	lastLocationAt        DateTime?
+	activeVehicleId       String?                  @db.Uuid
+	fleetId               String?                  @db.Uuid
+	createdAt             DateTime                 @default(now())
+	updatedAt             DateTime                 @updatedAt
+	deletedAt             DateTime?
+	fleet                 Fleet?                   @relation(fields: [fleetId], references: [id])
+	user                  User                     @relation(fields: [userId], references: [id])
+	documents             DriverDocument[]
+	locations             DriverLocation?
+	payouts               DriverPayout[]
+	financialTransactions FinancialTransaction[]
+	tripsAsDriver         Trip[]                   @relation("DriverTrips")
+	assignments           TripAssignment[]
+	vehicles              Vehicle[]
+
+	@@index([complianceStatus])
+	@@index([availability])
+	@@index([availableBalance])
+	@@index([pendingBalance])
+	@@index([deletedAt])
+}
+
+model DriverLocation {
+	driverId  String                   @id @db.Uuid
+	location  Unsupported("geography")
+	heading   Float?
+	speed     Float?
+	accuracy  Float?
+	updatedAt DateTime                 @updatedAt
+	driver    Driver                   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+	@@index([location], type: Gist)
+}
+
+model DriverDocument {
+	id              String         @id @db.Uuid
+	driverId        String         @db.Uuid
+	type            String
+	fileUrl         String
+	status          DocumentStatus @default(PENDING)
+	rejectionReason String?
+	expiryDate      DateTime?
+	createdAt       DateTime       @default(now())
+	driver          Driver         @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+	@@index([driverId])
+	@@index([status])
+}
+
+model Vehicle {
+	id                  String        @id @db.Uuid
+	driverId            String        @db.Uuid
+	plateNumber         String        @unique
+	brand               String
+	model               String
+	year                Int?
+	color               String
+	type                VehicleType   @default(MOTO)
+	photoUrl            String?
+	documentUrl         String?
+	insuranceUrl        String?
+	inspectionExpiresAt DateTime?
+	status              VehicleStatus @default(PENDING)
+	createdAt           DateTime      @default(now())
+	deletedAt           DateTime?
+	driver              Driver        @relation(fields: [driverId], references: [id])
+
+	@@index([driverId])
+	@@index([status])
+	@@index([deletedAt])
+}
+
+model Fleet {
+	id        String   @id @db.Uuid
+	ownerId   String   @db.Uuid
+	name      String
+	createdAt DateTime @default(now())
+	drivers   Driver[]
+	owner     User     @relation(fields: [ownerId], references: [id])
+
+	@@index([ownerId])
+}
+
+model PriceConfig {
+	id             String      @id @db.Uuid
+	vehicleType    VehicleType
+	baseFare       Decimal     @db.Decimal(12, 2)
+	pricePerKm     Decimal     @db.Decimal(12, 2)
+	pricePerMin    Decimal     @db.Decimal(12, 2)
+	minFare        Decimal     @db.Decimal(12, 2)
+	ivaRate        Float       @default(0.14)
+	serviceFeeRate Float       @default(0.15)
+	isActive       Boolean     @default(true)
+	createdAt      DateTime    @default(now())
+	trips          Trip[]
+
+	@@index([vehicleType, isActive])
+}
+
+model Zone {
+	id              String                   @id @db.Uuid
+	name            String
+	boundary        Unsupported("geography")
+	surgeMultiplier Float                    @default(1.0)
+	isActive        Boolean                  @default(true)
+
+	@@index([boundary], type: Gist)
+}
+
+model Trip {
+	id                     String                    @id @db.Uuid
+	idempotencyKey         String?                   @unique
+	clientId               String                    @db.Uuid
+	driverId               String?                   @db.Uuid
+	status                 TripStatus                @default(REQUESTED)
+	serviceType            ServiceType               @default(RIDE)
+	deliveryStatus         DeliveryStatus?
+	priceConfigId          String?                   @db.Uuid
+	requestLocation        Unsupported("geography")?
+	pickupCoords           Unsupported("geography")
+	dropoffCoords          Unsupported("geography")
+	pickupAddress          String
+	pickupReference        String?
+	dropoffAddress         String
+	dropoffReference       String?
+	pickupZoneId           String?                   @db.Uuid
+	dropoffZoneId          String?                   @db.Uuid
+	estimatedDistanceKm    Float?
+	estimatedDurationMin   Int?
+	actualDistanceKm       Float?
+	actualDurationMin      Int?
+	surgeMultiplierApplied Float                     @default(1.0)
+	subtotal               Decimal                   @db.Decimal(12, 2)
+	ivaAmount              Decimal                   @db.Decimal(12, 2)
+	serviceFee             Decimal                   @db.Decimal(12, 2)
+	driverEarnings         Decimal                   @db.Decimal(12, 2)
+	totalPrice             Decimal                   @db.Decimal(12, 2)
+	paymentMethod          PaymentMethod
+	paymentStatus          PaymentStatus             @default(PENDING)
+	changeFor              Decimal?                  @db.Decimal(12, 2)
+	cancelReason           String?
+	cancelledByUserId      String?                   @db.Uuid
+	requestedAt            DateTime                  @default(now())
+	acceptedAt             DateTime?
+	startedAt              DateTime?
+	completedAt            DateTime?
+	cancelledAt            DateTime?
+	createdAt              DateTime                  @default(now())
+	updatedAt              DateTime                  @updatedAt
+	deletedAt              DateTime?
+	couponId               String?                   @db.Uuid
+	discountAmount         Decimal                   @default(0) @db.Decimal(12, 2)
+	dropoffUserAddressId   String?                   @db.Uuid
+	pickupUserAddressId    String?                   @db.Uuid
+	deliveryDetails        DeliveryDetails?
+	disputes               Dispute[]
+	financialTransactions  FinancialTransaction[]
+	review                 Review?
+	client                 User                      @relation("ClientTrips", fields: [clientId], references: [id])
+	coupon                 Coupon?                   @relation(fields: [couponId], references: [id])
+	driver                 Driver?                   @relation("DriverTrips", fields: [driverId], references: [id])
+	priceConfig            PriceConfig?              @relation(fields: [priceConfigId], references: [id])
+	assignments            TripAssignment[]
+	events                 TripEvent[]
+	routePoints            TripLocationPoint[]
+
+	@@index([status])
+	@@index([serviceType])
+	@@index([clientId])
+	@@index([driverId])
+	@@index([requestedAt])
+	@@index([deletedAt])
+}
+
+model TripAssignment {
+	id        String               @id @db.Uuid
+	tripId    String               @db.Uuid
+	driverId  String               @db.Uuid
+	status    TripAssignmentStatus @default(OFFERED)
+	createdAt DateTime             @default(now())
+	driver    Driver               @relation(fields: [driverId], references: [id], onDelete: Cascade)
+	trip      Trip                 @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+	@@index([tripId])
+	@@index([driverId])
+}
+
+model DeliveryDetails {
+	id            String  @id @db.Uuid
+	tripId        String  @unique @db.Uuid
+	receiverName  String
+	receiverPhone String
+	packageType   String
+	notes         String?
+	metadata      Json?
+	trip          Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+}
+
+model TripEvent {
+	id          String        @id @db.Uuid
+	tripId      String        @db.Uuid
+	type        TripEventType
+	actorUserId String?       @db.Uuid
+	metadata    Json?
+	createdAt   DateTime      @default(now())
+	trip        Trip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+	@@index([tripId])
+	@@index([type])
+}
+
+model TripLocationPoint {
+	id         String                   @id @db.Uuid
+	tripId     String                   @db.Uuid
+	location   Unsupported("geography")
+	speed      Float?
+	heading    Float?
+	recordedAt DateTime                 @default(now())
+	trip       Trip                     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+	@@index([tripId])
+	@@index([location], type: Gist)
+}
+
+model FinancialTransaction {
+	id                String                     @id @db.Uuid
+	idempotencyKey    String?                    @unique
+	tripId            String?                    @db.Uuid
+	userId            String?                    @db.Uuid
+	driverId          String?                    @db.Uuid
+	type              FinancialTransactionType
+	status            FinancialTransactionStatus @default(PENDING)
+	amount            Decimal                    @db.Decimal(12, 2)
+	taxAmount         Decimal?                   @db.Decimal(12, 2)
+	currency          String                     @default("AOA")
+	description       String?
+	externalReference String?
+	metadata          Json?
+	createdAt         DateTime                   @default(now())
+	driver            Driver?                    @relation(fields: [driverId], references: [id])
+	trip              Trip?                      @relation(fields: [tripId], references: [id])
+	user              User?                      @relation(fields: [userId], references: [id])
+
+	@@index([tripId])
+	@@index([userId])
+	@@index([driverId])
+	@@index([type])
+	@@index([status])
+}
+
+model DriverPayout {
+	id          String    @id @db.Uuid
+	driverId    String    @db.Uuid
+	amount      Decimal   @db.Decimal(12, 2)
+	processedAt DateTime?
+	reference   String?
+	createdAt   DateTime  @default(now())
+	driver      Driver    @relation(fields: [driverId], references: [id])
+
+	@@index([driverId])
+}
+
+model Dispute {
+	id             String    @id @db.Uuid
+	tripId         String    @db.Uuid
+	openedByUserId String    @db.Uuid
+	reason         String
+	description    String?
+	resolution     String?
+	resolvedAt     DateTime?
+	createdAt      DateTime  @default(now())
+	trip           Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+	@@index([tripId])
+	@@index([openedByUserId])
+}
+
+model Review {
+	id         String   @id @db.Uuid
+	tripId     String   @unique @db.Uuid
+	fromUserId String   @db.Uuid
+	toUserId   String   @db.Uuid
+	rating     Int
+	comment    String?
+	createdAt  DateTime @default(now())
+	fromUser   User     @relation("ReviewsFrom", fields: [fromUserId], references: [id])
+	toUser     User     @relation("ReviewsTo", fields: [toUserId], references: [id])
+	trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+	@@unique([tripId, fromUserId])
+	@@index([toUserId])
+}
+
+model AuditLog {
+	id        String   @id @db.Uuid
+	adminId   String   @db.Uuid
+	action    String
+	entity    String
+	entityId  String
+	oldValue  Json?
+	newValue  Json?
+	createdAt DateTime @default(now())
+	admin     User     @relation(fields: [adminId], references: [id])
+
+	@@index([adminId])
+	@@index([entity, entityId])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+	srid      Int     @id
+	auth_name String? @db.VarChar(256)
+	auth_srid Int?
+	srtext    String? @db.VarChar(2048)
+	proj4text String? @db.VarChar(2048)
+}
+
+enum UserStatus {
+	ACTIVE
+	BANNED
+}
+
+enum UserRole {
+	CLIENT
+	DRIVER
+	SUPER_ADMIN
+	OPERATIONS
+	SUPPORT
+	VALIDATOR
+	FINANCE
+	FLEET_MANAGER
+}
+
+enum DriverComplianceStatus {
+	PENDING
+	APPROVED
+	REJECTED
+	SUSPENDED
+}
+
+enum DriverAvailabilityStatus {
+	ONLINE
+	OFFLINE
+	BUSY
+}
+
+enum DocumentStatus {
+	PENDING
+	APPROVED
+	REJECTED
+	EXPIRED
+}
+
+enum TripStatus {
+	REQUESTED
+	ACCEPTED
+	PICKUP_IN_PROGRESS
+	STARTED
+	COMPLETED
+	CANCELLED
+}
+
+enum DeliveryStatus {
+	WAITING_PICKUP
+	PICKED_UP
+	IN_TRANSIT
+	DELIVERED
+}
+
+enum TripAssignmentStatus {
+	OFFERED
+	REJECTED
+	EXPIRED
+}
+
+enum ServiceType {
+	RIDE
+	DELIVERY
+}
+
+enum DiscountType {
+	PERCENTAGE
+	FIXED_AMOUNT
+}
+
+enum AddressLabel {
+	HOME
+	WORK
+	OTHER
+}
+
+enum VehicleType {
+	MOTO
+	CARRO
+}
+
+enum VehicleStatus {
+	PENDING
+	ACTIVE
+	BLOCKED
+	MAINTENANCE
+}
+
+enum PaymentMethod {
+	CASH
+	MCX_EXPRESS
+	UNITEL_MONEY
+}
+
+enum PaymentStatus {
+	PENDING
+	AUTHORIZED
+	PAID
+	FAILED
+	REFUNDED
+	PARTIALLY_REFUNDED
+	CASH_PENDING
+}
+
+enum FinancialTransactionType {
+	TRIP_PAYMENT
+	DRIVER_PAYOUT
+	PLATFORM_COMMISSION
+	BONUS
+	PENALTY
+	REFUND
+	ADJUSTMENT
+	CASH_COLLECTION
+}
+
+enum FinancialTransactionStatus {
+	PENDING
+	COMPLETED
+	FAILED
+	CANCELLED
+}
+
+enum TripEventType {
+	TRIP_REQUESTED
+	DRIVER_OFFERED
+	DRIVER_ACCEPTED
+	DRIVER_REJECTED
+	DRIVER_ARRIVED_PICKUP
+	PICKUP_CONFIRMED
+	TRIP_STARTED
+	LOCATION_UPDATED
+	ARRIVED_DROPOFF
+	TRIP_COMPLETED
+	TRIP_CANCELLED
+}
