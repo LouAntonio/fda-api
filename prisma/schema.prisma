@@ -422,9 +422,11 @@ model DriverPayout {
 	processedAt DateTime?
 	reference   String?
 	createdAt   DateTime  @default(now())
+	deletedAt   DateTime?
 	driver      Driver    @relation(fields: [driverId], references: [id])
 
 	@@index([driverId])
+	@@index([deletedAt])
 }
 
 model Dispute {
@@ -436,10 +438,13 @@ model Dispute {
 	resolution     String?
 	resolvedAt     DateTime?
 	createdAt      DateTime  @default(now())
+	updatedAt      DateTime  @updatedAt
+	deletedAt      DateTime?
 	trip           Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
 	@@index([tripId])
 	@@index([openedByUserId])
+	@@index([deletedAt])
 }
 
 model Review {
@@ -450,12 +455,15 @@ model Review {
 	rating     Int
 	comment    String?
 	createdAt  DateTime @default(now())
+	updatedAt  DateTime @updatedAt
+	deletedAt  DateTime?
 	fromUser   User     @relation("ReviewsFrom", fields: [fromUserId], references: [id])
 	toUser     User     @relation("ReviewsTo", fields: [toUserId], references: [id])
 	trip       Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
 	@@unique([tripId, fromUserId])
 	@@index([toUserId])
+	@@index([deletedAt])
 }
 
 model AuditLog {

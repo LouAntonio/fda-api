@@ -20,6 +20,10 @@ import { DeliveryDetailsModule } from './delivery-details/delivery-details.modul
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
 import { FinancialTransactionsModule } from './financial-transactions/financial-transactions.module';
+import { DriverPayoutsModule } from './driver-payouts/driver-payouts.module';
+import { DisputesModule } from './disputes/disputes.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -52,6 +56,10 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		TripEventsModule,
 		TripLocationPointsModule,
 		FinancialTransactionsModule,
+		DriverPayoutsModule,
+		DisputesModule,
+		ReviewsModule,
+		AuditLogsModule,
 	],
 	controllers: [AppController],
 	providers: [
