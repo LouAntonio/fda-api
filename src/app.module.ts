@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { ResendModule } from './email/resend.module';
 import { UsersModule } from './users/users.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { CouponsModule } from './coupons/coupons.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -28,6 +29,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		ResendModule,
 		UsersModule,
 		UploadsModule,
+		CouponsModule,
 	],
 	controllers: [AppController],
 	providers: [

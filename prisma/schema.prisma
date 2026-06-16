@@ -136,10 +136,12 @@ model Coupon {
 	isActive      Boolean      @default(true)
 	createdAt     DateTime     @default(now())
 	updatedAt     DateTime     @updatedAt
+	deletedAt     DateTime?
 	trips         Trip[]
 
 	@@index([code])
 	@@index([isActive])
+	@@index([deletedAt])
 }
 
 model Driver {
