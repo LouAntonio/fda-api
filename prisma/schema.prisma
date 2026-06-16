@@ -338,22 +338,27 @@ model TripAssignment {
 	driverId  String               @db.Uuid
 	status    TripAssignmentStatus @default(OFFERED)
 	createdAt DateTime             @default(now())
+	updatedAt DateTime             @updatedAt
+	deletedAt DateTime?
 	driver    Driver               @relation(fields: [driverId], references: [id], onDelete: Cascade)
 	trip      Trip                 @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
 	@@index([tripId])
 	@@index([driverId])
+	@@index([deletedAt])
 }
 
 model DeliveryDetails {
-	id            String  @id @db.Uuid
-	tripId        String  @unique @db.Uuid
+	id            String   @id @db.Uuid
+	tripId        String   @unique @db.Uuid
 	receiverName  String
 	receiverPhone String
 	packageType   String
 	notes         String?
 	metadata      Json?
-	trip          Trip    @relation(fields: [tripId], references: [id], onDelete: Cascade)
+	createdAt     DateTime @default(now())
+	updatedAt     DateTime @updatedAt
+	trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 }
 
 model TripEvent {
