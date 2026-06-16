@@ -41,9 +41,7 @@ export class DriverPayoutsService {
 		}
 
 		if (Number(driver.availableBalance) < dto.amount) {
-			throw new BadRequestException(
-				'Saldo insuficiente do motorista',
-			);
+			throw new BadRequestException('Saldo insuficiente do motorista');
 		}
 
 		const payout = await this.prisma.client.driverPayout.create({
@@ -202,10 +200,7 @@ export class DriverPayoutsService {
 			select: defaultPayoutSelect,
 		});
 
-		this.logger.log(
-			`DriverPayout ${id} updated`,
-			'DriverPayoutsService',
-		);
+		this.logger.log(`DriverPayout ${id} updated`, 'DriverPayoutsService');
 
 		return updated;
 	}

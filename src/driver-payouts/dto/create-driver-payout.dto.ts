@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsNumber, Min, IsDateString } from 'class-validator';
+import {
+	IsString,
+	IsOptional,
+	IsNumber,
+	Min,
+	IsDateString,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateDriverPayoutDto {

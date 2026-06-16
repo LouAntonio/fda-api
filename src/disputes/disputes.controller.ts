@@ -2,7 +2,6 @@ import {
 	Controller,
 	Get,
 	Post,
-	Patch,
 	Delete,
 	Param,
 	Body,
@@ -42,16 +41,11 @@ export class DisputesController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar disputas',
-		description:
-			'Lista disputas com paginação e filtros',
+		description: 'Lista disputas com paginação e filtros',
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Get()
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	list(@Query(ValidationPipe) dto: ListDisputesDto) {
 		return this.disputesService.list(dto);
 	}
@@ -63,11 +57,7 @@ export class DisputesController {
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Get(':id')
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	findById(@Param('id') id: string) {
 		return this.disputesService.findById(id);
 	}
@@ -75,16 +65,11 @@ export class DisputesController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Resolver disputa',
-		description:
-			'Define a resolução da disputa e marca como resolvida',
+		description: 'Define a resolução da disputa e marca como resolvida',
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Post(':id/resolve')
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	resolve(
 		@Param('id') id: string,
 		@Body(ValidationPipe) dto: ResolveDisputeDto,

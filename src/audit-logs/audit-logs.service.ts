@@ -1,7 +1,4 @@
-import {
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -129,9 +126,7 @@ export class AuditLogsService {
 		});
 
 		if (!log) {
-			throw new NotFoundException(
-				'Entrada de auditoria não encontrada',
-			);
+			throw new NotFoundException('Entrada de auditoria não encontrada');
 		}
 
 		return log;

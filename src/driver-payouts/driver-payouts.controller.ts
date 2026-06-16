@@ -41,8 +41,7 @@ export class DriverPayoutsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar pagamentos',
-		description:
-			'Lista pagamentos com paginação e filtros',
+		description: 'Lista pagamentos com paginação e filtros',
 	})
 	@Get()
 	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.FINANCE)
@@ -64,8 +63,7 @@ export class DriverPayoutsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Atualizar pagamento',
-		description:
-			'Atualiza referência e/ou data de processamento',
+		description: 'Atualiza referência e/ou data de processamento',
 	})
 	@Patch(':id')
 	@Roles(UserRole.SUPER_ADMIN, UserRole.FINANCE)

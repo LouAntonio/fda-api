@@ -18,8 +18,7 @@ export class RegisterCashCollectionDto {
 
 	@ApiPropertyOptional({
 		example: 1500.0,
-		description:
-			'Valor recolhido (default = totalPrice da viagem)',
+		description: 'Valor recolhido (default = totalPrice da viagem)',
 	})
 	@IsOptional()
 	@IsNumber()

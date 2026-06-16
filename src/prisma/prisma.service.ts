@@ -12,6 +12,7 @@ function createExtendedClient() {
 		query: {
 			$allModels: {
 				$allOperations(params: any) {
+					/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 					const { operation, args, query } = params;
 					if (
 						(operation === 'create' && !args.data['id']) ||
@@ -30,6 +31,7 @@ function createExtendedClient() {
 						}
 					}
 					return query(args);
+					/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
 				},
 			},
 		},
@@ -55,6 +57,7 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 	}
 
 	get $queryRawUnsafe() {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return this.client.$queryRawUnsafe.bind(this.client);
 	}
 }

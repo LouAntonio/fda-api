@@ -24,9 +24,7 @@ import { ListTripAssignmentsDto } from './dto/list-trip-assignments.dto';
 @Controller('trip-assignments')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TripAssignmentsController {
-	constructor(
-		private tripAssignmentsService: TripAssignmentsService,
-	) {}
+	constructor(private tripAssignmentsService: TripAssignmentsService) {}
 
 	@ApiBearerAuth()
 	@ApiOperation({
@@ -42,8 +40,7 @@ export class TripAssignmentsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar atribuições',
-		description:
-			'Lista todas as atribuições com paginação e filtros',
+		description: 'Lista todas as atribuições com paginação e filtros',
 	})
 	@Get()
 	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
@@ -69,11 +66,7 @@ export class TripAssignmentsController {
 			'Atualiza o estado de uma atribuição (ACEITAR/REJEITAR/EXPIRAR)',
 	})
 	@Patch(':id')
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.DRIVER,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.DRIVER)
 	update(
 		@Param('id') id: string,
 		@Body(ValidationPipe) dto: UpdateTripAssignmentDto,

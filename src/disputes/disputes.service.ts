@@ -182,10 +182,7 @@ export class DisputesService {
 			data: { deletedAt: new Date() },
 		});
 
-		this.logger.log(
-			`Dispute ${id} soft-deleted`,
-			'DisputesService',
-		);
+		this.logger.log(`Dispute ${id} soft-deleted`, 'DisputesService');
 
 		return {
 			msg: 'Disputa removida com sucesso',

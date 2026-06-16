@@ -8,7 +8,12 @@ import {
 	IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TripStatus, ServiceType, PaymentStatus, DeliveryStatus } from '@prisma/client';
+import {
+	TripStatus,
+	ServiceType,
+	PaymentStatus,
+	DeliveryStatus,
+} from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ListTripsDto {

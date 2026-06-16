@@ -22,6 +22,7 @@ export class HealthController {
 	async check() {
 		let dbStatus = 'online';
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			await this.prisma.$queryRawUnsafe('SELECT 1');
 		} catch {
 			dbStatus = 'error';

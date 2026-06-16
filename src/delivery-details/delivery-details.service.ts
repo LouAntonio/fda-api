@@ -39,10 +39,9 @@ export class DeliveryDetailsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const existing =
-			await this.prisma.client.deliveryDetails.findUnique({
-				where: { tripId: dto.tripId },
-			});
+		const existing = await this.prisma.client.deliveryDetails.findUnique({
+			where: { tripId: dto.tripId },
+		});
 
 		if (existing) {
 			throw new ConflictException(
@@ -50,19 +49,18 @@ export class DeliveryDetailsService {
 			);
 		}
 
-		const details =
-			await this.prisma.client.deliveryDetails.create({
-				data: {
-					id: uuidv7(),
-					tripId: dto.tripId,
-					receiverName: dto.receiverName,
-					receiverPhone: dto.receiverPhone,
-					packageType: dto.packageType,
-					notes: dto.notes ?? null,
-					metadata: dto.metadata ?? undefined,
-				},
-				select: defaultDeliveryDetailsSelect,
-			});
+		const details = await this.prisma.client.deliveryDetails.create({
+			data: {
+				id: uuidv7(),
+				tripId: dto.tripId,
+				receiverName: dto.receiverName,
+				receiverPhone: dto.receiverPhone,
+				packageType: dto.packageType,
+				notes: dto.notes ?? null,
+				metadata: dto.metadata ?? undefined,
+			},
+			select: defaultDeliveryDetailsSelect,
+		});
 
 		this.logger.log(
 			`DeliveryDetails ${details.id} created for trip ${dto.tripId}`,
@@ -73,45 +71,41 @@ export class DeliveryDetailsService {
 	}
 
 	async findById(id: string) {
-		const details =
-			await this.prisma.client.deliveryDetails.findUnique({
-				where: { id },
-				select: {
-					...defaultDeliveryDetailsSelect,
-					trip: {
-						select: {
-							id: true,
-							status: true,
-							clientId: true,
-						},
+		const details = await this.prisma.client.deliveryDetails.findUnique({
+			where: { id },
+			select: {
+				...defaultDeliveryDetailsSelect,
+				trip: {
+					select: {
+						id: true,
+						status: true,
+						clientId: true,
 					},
 				},
-			});
+			},
+		});
 
 		if (!details) {
-			throw new NotFoundException(
-				'Detalhes de entrega não encontrados',
-			);
+			throw new NotFoundException('Detalhes de entrega não encontrados');
 		}
 
 		return details;
 	}
 
 	async findByTripId(tripId: string) {
-		const details =
-			await this.prisma.client.deliveryDetails.findUnique({
-				where: { tripId },
-				select: {
-					...defaultDeliveryDetailsSelect,
-					trip: {
-						select: {
-							id: true,
-							status: true,
-							clientId: true,
-						},
+		const details = await this.prisma.client.deliveryDetails.findUnique({
+			where: { tripId },
+			select: {
+				...defaultDeliveryDetailsSelect,
+				trip: {
+					select: {
+						id: true,
+						status: true,
+						clientId: true,
 					},
 				},
-			});
+			},
+		});
 
 		if (!details) {
 			throw new NotFoundException(
@@ -123,15 +117,12 @@ export class DeliveryDetailsService {
 	}
 
 	async update(id: string, dto: UpdateDeliveryDetailsDto) {
-		const details =
-			await this.prisma.client.deliveryDetails.findUnique({
-				where: { id },
-			});
+		const details = await this.prisma.client.deliveryDetails.findUnique({
+			where: { id },
+		});
 
 		if (!details) {
-			throw new NotFoundException(
-				'Detalhes de entrega não encontrados',
-			);
+			throw new NotFoundException('Detalhes de entrega não encontrados');
 		}
 
 		const data: Record<string, unknown> = {};
@@ -140,8 +131,7 @@ export class DeliveryDetailsService {
 			data.receiverName = dto.receiverName;
 		if (dto.receiverPhone !== undefined)
 			data.receiverPhone = dto.receiverPhone;
-		if (dto.packageType !== undefined)
-			data.packageType = dto.packageType;
+		if (dto.packageType !== undefined) data.packageType = dto.packageType;
 		if (dto.notes !== undefined) data.notes = dto.notes;
 		if (dto.metadata !== undefined) data.metadata = dto.metadata;
 
@@ -149,12 +139,11 @@ export class DeliveryDetailsService {
 			throw new BadRequestException('Nenhum dado para atualizar');
 		}
 
-		const updated =
-			await this.prisma.client.deliveryDetails.update({
-				where: { id },
-				data,
-				select: defaultDeliveryDetailsSelect,
-			});
+		const updated = await this.prisma.client.deliveryDetails.update({
+			where: { id },
+			data,
+			select: defaultDeliveryDetailsSelect,
+		});
 
 		this.logger.log(
 			`DeliveryDetails ${id} updated`,
@@ -165,15 +154,12 @@ export class DeliveryDetailsService {
 	}
 
 	async remove(id: string) {
-		const details =
-			await this.prisma.client.deliveryDetails.findUnique({
-				where: { id },
-			});
+		const details = await this.prisma.client.deliveryDetails.findUnique({
+			where: { id },
+		});
 
 		if (!details) {
-			throw new NotFoundException(
-				'Detalhes de entrega não encontrados',
-			);
+			throw new NotFoundException('Detalhes de entrega não encontrados');
 		}
 
 		await this.prisma.client.deliveryDetails.delete({

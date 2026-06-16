@@ -1,7 +1,4 @@
-import {
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -34,7 +31,7 @@ export class TripEventsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const event = await (this.prisma.client.tripEvent as any).create({
+		const event = await this.prisma.client.tripEvent.create({
 			data: {
 				id: uuidv7(),
 				tripId: dto.tripId,
@@ -66,12 +63,14 @@ export class TripEventsService {
 		if (dto.dateFrom || dto.dateTo) {
 			where.createdAt = {};
 			if (dto.dateFrom) {
-				(where.createdAt as Record<string, unknown>).gte =
-					new Date(dto.dateFrom);
+				(where.createdAt as Record<string, unknown>).gte = new Date(
+					dto.dateFrom,
+				);
 			}
 			if (dto.dateTo) {
-				(where.createdAt as Record<string, unknown>).lte =
-					new Date(dto.dateTo);
+				(where.createdAt as Record<string, unknown>).lte = new Date(
+					dto.dateTo,
+				);
 			}
 		}
 
@@ -79,16 +78,16 @@ export class TripEventsService {
 		orderBy[dto.sortBy ?? 'createdAt'] = dto.sortOrder ?? 'asc';
 
 		const [events, total] = await Promise.all([
-			(this.prisma.client.tripEvent as any).findMany({
+			this.prisma.client.tripEvent.findMany({
 				where,
 				skip,
 				take: limit,
 				orderBy,
 				select: defaultEventSelect,
-			}) as Promise<any[]>,
-			(this.prisma.client.tripEvent as any).count({
+			}),
+			this.prisma.client.tripEvent.count({
 				where,
-			}) as Promise<number>,
+			}),
 		]);
 
 		return {
@@ -101,7 +100,7 @@ export class TripEventsService {
 	}
 
 	async findById(id: string) {
-		const event = await (this.prisma.client.tripEvent as any).findUnique({
+		const event = await this.prisma.client.tripEvent.findUnique({
 			where: { id },
 			select: {
 				...defaultEventSelect,

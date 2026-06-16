@@ -632,7 +632,9 @@ export class TripsService {
 				where: { id: trip.driverId },
 				data: {
 					completedTripsCount: { increment: 1 },
-					availableBalance: { increment: Number(trip.driverEarnings ?? 0) },
+					availableBalance: {
+						increment: Number(trip.driverEarnings ?? 0),
+					},
 				},
 			});
 		}
@@ -662,6 +664,7 @@ export class TripsService {
 		dto: UpdateDeliveryStatusDto,
 		actorUserId: string,
 	) {
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const trip = await (this.prisma.client.trip as any).findUnique({
 			where: { id },
 		});
@@ -671,12 +674,11 @@ export class TripsService {
 		}
 
 		if (trip.serviceType !== ServiceType.DELIVERY) {
-			throw new BadRequestException(
-				'Esta viagem não é do tipo entrega',
-			);
+			throw new BadRequestException('Esta viagem não é do tipo entrega');
 		}
 
-		const currentDeliveryStatus = trip.deliveryStatus as DeliveryStatus | null;
+		const currentDeliveryStatus =
+			trip.deliveryStatus as DeliveryStatus | null;
 		const nextDeliveryStatus = dto.deliveryStatus;
 
 		if (!currentDeliveryStatus) {
@@ -716,6 +718,7 @@ export class TripsService {
 		);
 
 		return updated;
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async cancel(

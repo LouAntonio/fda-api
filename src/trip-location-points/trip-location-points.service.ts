@@ -1,7 +1,4 @@
-import {
-	Injectable,
-	NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -25,6 +22,7 @@ export class TripLocationPointsService {
 	) {}
 
 	async create(dto: CreateTripLocationPointDto) {
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: dto.tripId },
 			select: { id: true },
@@ -34,8 +32,9 @@ export class TripLocationPointsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const point = await (this.prisma.client
-			.tripLocationPoint as any).create({
+		const point = await (
+			this.prisma.client.tripLocationPoint as any
+		).create({
 			data: {
 				id: uuidv7(),
 				tripId: dto.tripId,
@@ -55,6 +54,7 @@ export class TripLocationPointsService {
 		);
 
 		return point;
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async list(dto: ListTripLocationPointsDto) {
@@ -69,12 +69,14 @@ export class TripLocationPointsService {
 		if (dto.dateFrom || dto.dateTo) {
 			where.recordedAt = {};
 			if (dto.dateFrom) {
-				(where.recordedAt as Record<string, unknown>).gte =
-					new Date(dto.dateFrom);
+				(where.recordedAt as Record<string, unknown>).gte = new Date(
+					dto.dateFrom,
+				);
 			}
 			if (dto.dateTo) {
-				(where.recordedAt as Record<string, unknown>).lte =
-					new Date(dto.dateTo);
+				(where.recordedAt as Record<string, unknown>).lte = new Date(
+					dto.dateTo,
+				);
 			}
 		}
 
@@ -82,16 +84,16 @@ export class TripLocationPointsService {
 		orderBy[dto.sortBy ?? 'recordedAt'] = dto.sortOrder ?? 'asc';
 
 		const [points, total] = await Promise.all([
-			(this.prisma.client.tripLocationPoint as any).findMany({
+			this.prisma.client.tripLocationPoint.findMany({
 				where,
 				skip,
 				take: limit,
 				orderBy,
 				select: defaultLocationPointSelect,
-			}) as Promise<any[]>,
-			(this.prisma.client.tripLocationPoint as any).count({
+			}),
+			this.prisma.client.tripLocationPoint.count({
 				where,
-			}) as Promise<number>,
+			}),
 		]);
 
 		return {
@@ -104,8 +106,7 @@ export class TripLocationPointsService {
 	}
 
 	async findById(id: string) {
-		const point = await (this.prisma.client
-			.tripLocationPoint as any).findUnique({
+		const point = await this.prisma.client.tripLocationPoint.findUnique({
 			where: { id },
 			select: {
 				...defaultLocationPointSelect,
@@ -119,27 +120,22 @@ export class TripLocationPointsService {
 		});
 
 		if (!point) {
-			throw new NotFoundException(
-				'Ponto de localização não encontrado',
-			);
+			throw new NotFoundException('Ponto de localização não encontrado');
 		}
 
 		return point;
 	}
 
 	async remove(id: string) {
-		const point = await (this.prisma.client
-			.tripLocationPoint as any).findUnique({
+		const point = await this.prisma.client.tripLocationPoint.findUnique({
 			where: { id },
 		});
 
 		if (!point) {
-			throw new NotFoundException(
-				'Ponto de localização não encontrado',
-			);
+			throw new NotFoundException('Ponto de localização não encontrado');
 		}
 
-		await (this.prisma.client.tripLocationPoint as any).delete({
+		await this.prisma.client.tripLocationPoint.delete({
 			where: { id },
 		});
 

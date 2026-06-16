@@ -26,8 +26,7 @@ export class AuditLogsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Registar log',
-		description:
-			'Regista manualmente uma entrada no registo de auditoria',
+		description: 'Regista manualmente uma entrada no registo de auditoria',
 	})
 	@Post()
 	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS)
@@ -42,11 +41,7 @@ export class AuditLogsController {
 			'Lista entradas do registo de auditoria com paginação e filtros',
 	})
 	@Get()
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	list(@Query(ValidationPipe) dto: ListAuditLogsDto) {
 		return this.auditLogsService.list(dto);
 	}
@@ -58,11 +53,7 @@ export class AuditLogsController {
 			'Retorna os dados de uma entrada específica do registo de auditoria',
 	})
 	@Get(':id')
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	findById(@Param('id') id: string) {
 		return this.auditLogsService.findById(id);
 	}

@@ -21,23 +21,16 @@ import { ListTripLocationPointsDto } from './dto/list-trip-location-points.dto';
 @ApiTags('Pontos de Localização')
 @Controller('trip-location-points')
 export class TripLocationPointsController {
-	constructor(
-		private tripLocationPointsService: TripLocationPointsService,
-	) {}
+	constructor(private tripLocationPointsService: TripLocationPointsService) {}
 
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Registar ponto GPS',
-		description:
-			'Regista um ponto de localização para uma viagem',
+		description: 'Regista um ponto de localização para uma viagem',
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Post()
-	@Roles(
-		UserRole.DRIVER,
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-	)
+	@Roles(UserRole.DRIVER, UserRole.SUPER_ADMIN, UserRole.OPERATIONS)
 	create(@Body(ValidationPipe) dto: CreateTripLocationPointDto) {
 		return this.tripLocationPointsService.create(dto);
 	}
@@ -45,8 +38,7 @@ export class TripLocationPointsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar pontos GPS',
-		description:
-			'Lista pontos de localização com paginação e filtros',
+		description: 'Lista pontos de localização com paginação e filtros',
 	})
 	@UseGuards(JwtAuthGuard)
 	@Get()
@@ -57,8 +49,7 @@ export class TripLocationPointsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Obter ponto GPS',
-		description:
-			'Retorna os dados de um ponto de localização específico',
+		description: 'Retorna os dados de um ponto de localização específico',
 	})
 	@UseGuards(JwtAuthGuard)
 	@Get(':id')

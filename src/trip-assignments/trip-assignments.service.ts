@@ -126,38 +126,37 @@ export class TripAssignmentsService {
 	}
 
 	async findById(id: string) {
-		const assignment =
-			await this.prisma.client.tripAssignment.findUnique({
-				where: { id },
-				select: {
-					...defaultAssignmentSelect,
-					trip: {
-						select: {
-							id: true,
-							status: true,
-							pickupAddress: true,
-							dropoffAddress: true,
-							clientId: true,
-						},
+		const assignment = await this.prisma.client.tripAssignment.findUnique({
+			where: { id },
+			select: {
+				...defaultAssignmentSelect,
+				trip: {
+					select: {
+						id: true,
+						status: true,
+						pickupAddress: true,
+						dropoffAddress: true,
+						clientId: true,
 					},
-					driver: {
-						select: {
-							id: true,
-							biNumber: true,
-							licenseNumber: true,
-							user: {
-								select: {
-									id: true,
-									name: true,
-									surname: true,
-									phoneNumber: true,
-									image: true,
-								},
+				},
+				driver: {
+					select: {
+						id: true,
+						biNumber: true,
+						licenseNumber: true,
+						user: {
+							select: {
+								id: true,
+								name: true,
+								surname: true,
+								phoneNumber: true,
+								image: true,
 							},
 						},
 					},
 				},
-			});
+			},
+		});
 
 		if (!assignment || assignment.deletedAt) {
 			throw new NotFoundException('Atribuição não encontrada');
@@ -167,10 +166,9 @@ export class TripAssignmentsService {
 	}
 
 	async update(id: string, dto: UpdateTripAssignmentDto) {
-		const assignment =
-			await this.prisma.client.tripAssignment.findUnique({
-				where: { id },
-			});
+		const assignment = await this.prisma.client.tripAssignment.findUnique({
+			where: { id },
+		});
 
 		if (!assignment || assignment.deletedAt) {
 			throw new NotFoundException('Atribuição não encontrada');
@@ -182,12 +180,11 @@ export class TripAssignmentsService {
 			);
 		}
 
-		const updated =
-			await this.prisma.client.tripAssignment.update({
-				where: { id },
-				data: { status: dto.status },
-				select: defaultAssignmentSelect,
-			});
+		const updated = await this.prisma.client.tripAssignment.update({
+			where: { id },
+			data: { status: dto.status },
+			select: defaultAssignmentSelect,
+		});
 
 		this.logger.log(
 			`TripAssignment ${id} status: ${assignment.status} -> ${dto.status}`,
@@ -198,10 +195,9 @@ export class TripAssignmentsService {
 	}
 
 	async remove(id: string) {
-		const assignment =
-			await this.prisma.client.tripAssignment.findUnique({
-				where: { id },
-			});
+		const assignment = await this.prisma.client.tripAssignment.findUnique({
+			where: { id },
+		});
 
 		if (!assignment || assignment.deletedAt) {
 			throw new NotFoundException('Atribuição não encontrada');

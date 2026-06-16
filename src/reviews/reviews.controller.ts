@@ -32,11 +32,7 @@ export class ReviewsController {
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Post()
-	@Roles(
-		UserRole.CLIENT,
-		UserRole.DRIVER,
-		UserRole.SUPER_ADMIN,
-	)
+	@Roles(UserRole.CLIENT, UserRole.DRIVER, UserRole.SUPER_ADMIN)
 	create(@Body(ValidationPipe) dto: CreateReviewDto) {
 		return this.reviewsService.create(dto);
 	}
@@ -44,8 +40,7 @@ export class ReviewsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar avaliações',
-		description:
-			'Lista avaliações com paginação e filtros',
+		description: 'Lista avaliações com paginação e filtros',
 	})
 	@UseGuards(JwtAuthGuard)
 	@Get()

@@ -37,8 +37,7 @@ export class TripEventsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Listar eventos',
-		description:
-			'Lista eventos de viagem com paginação e filtros',
+		description: 'Lista eventos de viagem com paginação e filtros',
 	})
 	@UseGuards(JwtAuthGuard)
 	@Get()

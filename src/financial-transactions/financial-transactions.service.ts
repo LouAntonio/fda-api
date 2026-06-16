@@ -95,7 +95,7 @@ export class FinancialTransactionsService {
 			});
 
 		this.logger.log(
-			`FinancialTransaction ${transaction.id} created: ${transaction.type} ${transaction.amount} ${transaction.currency}`,
+			`FinancialTransaction ${transaction.id} created: ${transaction.type} ${Number(transaction.amount)} ${transaction.currency}`,
 			'FinancialTransactionsService',
 		);
 
@@ -263,8 +263,7 @@ export class FinancialTransactionsService {
 		if (dto.status !== undefined) data.status = dto.status;
 		if (dto.taxAmount !== undefined) data.taxAmount = dto.taxAmount;
 		if (dto.currency !== undefined) data.currency = dto.currency;
-		if (dto.description !== undefined)
-			data.description = dto.description;
+		if (dto.description !== undefined) data.description = dto.description;
 		if (dto.externalReference !== undefined)
 			data.externalReference = dto.externalReference;
 		if (dto.metadata !== undefined) data.metadata = dto.metadata;
@@ -273,12 +272,11 @@ export class FinancialTransactionsService {
 			throw new BadRequestException('Nenhum dado para atualizar');
 		}
 
-		const updated =
-			await this.prisma.client.financialTransaction.update({
-				where: { id },
-				data,
-				select: defaultTransactionSelect,
-			});
+		const updated = await this.prisma.client.financialTransaction.update({
+			where: { id },
+			data,
+			select: defaultTransactionSelect,
+		});
 
 		this.logger.log(
 			`FinancialTransaction ${id} updated`,
@@ -304,12 +302,11 @@ export class FinancialTransactionsService {
 			);
 		}
 
-		const updated =
-			await this.prisma.client.financialTransaction.update({
-				where: { id },
-				data: { status: dto.status },
-				select: defaultTransactionSelect,
-			});
+		const updated = await this.prisma.client.financialTransaction.update({
+			where: { id },
+			data: { status: dto.status },
+			select: defaultTransactionSelect,
+		});
 
 		this.logger.log(
 			`FinancialTransaction ${id} status: ${transaction.status} -> ${dto.status}`,
@@ -370,15 +367,11 @@ export class FinancialTransactionsService {
 		}
 
 		if (trip.paymentMethod !== PaymentMethod.CASH) {
-			throw new BadRequestException(
-				'Esta viagem não foi paga em cash',
-			);
+			throw new BadRequestException('Esta viagem não foi paga em cash');
 		}
 
 		if (trip.paymentStatus === PaymentStatus.PAID) {
-			throw new BadRequestException(
-				'Esta viagem já foi paga',
-			);
+			throw new BadRequestException('Esta viagem já foi paga');
 		}
 
 		if (trip.driverId !== dto.driverId) {
@@ -400,8 +393,7 @@ export class FinancialTransactionsService {
 					amount,
 					currency: 'AOA',
 					description:
-						dto.notes ??
-						`Recolha de cash - viagem ${trip.id}`,
+						dto.notes ?? `Recolha de cash - viagem ${trip.id}`,
 				},
 				select: defaultTransactionSelect,
 			});

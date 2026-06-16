@@ -21,9 +21,7 @@ import { UpdateDeliveryDetailsDto } from './dto/update-delivery-details.dto';
 @ApiTags('Detalhes de Entrega')
 @Controller('delivery-details')
 export class DeliveryDetailsController {
-	constructor(
-		private deliveryDetailsService: DeliveryDetailsService,
-	) {}
+	constructor(private deliveryDetailsService: DeliveryDetailsService) {}
 
 	@ApiBearerAuth()
 	@ApiOperation({
@@ -51,8 +49,7 @@ export class DeliveryDetailsController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Obter detalhes por viagem',
-		description:
-			'Retorna os detalhes de entrega associados a uma viagem',
+		description: 'Retorna os detalhes de entrega associados a uma viagem',
 	})
 	@UseGuards(JwtAuthGuard)
 	@Get('trip/:tripId')

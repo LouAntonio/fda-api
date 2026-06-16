@@ -33,9 +33,7 @@ export class ReviewsService {
 
 	async create(dto: CreateReviewDto) {
 		if (dto.fromUserId === dto.toUserId) {
-			throw new BadRequestException(
-				'Não pode avaliar a si próprio',
-			);
+			throw new BadRequestException('Não pode avaliar a si próprio');
 		}
 
 		const trip = await this.prisma.client.trip.findUnique({
@@ -230,10 +228,7 @@ export class ReviewsService {
 
 		await this.recalculateDriverRating(review.toUserId);
 
-		this.logger.log(
-			`Review ${id} updated`,
-			'ReviewsService',
-		);
+		this.logger.log(`Review ${id} updated`, 'ReviewsService');
 
 		return updated;
 	}
@@ -254,10 +249,7 @@ export class ReviewsService {
 
 		await this.recalculateDriverRating(review.toUserId);
 
-		this.logger.log(
-			`Review ${id} soft-deleted`,
-			'ReviewsService',
-		);
+		this.logger.log(`Review ${id} soft-deleted`, 'ReviewsService');
 
 		return {
 			msg: 'Avaliação removida com sucesso',
