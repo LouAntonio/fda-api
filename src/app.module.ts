@@ -19,6 +19,7 @@ import { TripAssignmentsModule } from './trip-assignments/trip-assignments.modul
 import { DeliveryDetailsModule } from './delivery-details/delivery-details.module';
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
+import { FinancialTransactionsModule } from './financial-transactions/financial-transactions.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -50,6 +51,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		DeliveryDetailsModule,
 		TripEventsModule,
 		TripLocationPointsModule,
+		FinancialTransactionsModule,
 	],
 	controllers: [AppController],
 	providers: [

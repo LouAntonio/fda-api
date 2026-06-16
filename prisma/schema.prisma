@@ -402,6 +402,7 @@ model FinancialTransaction {
 	externalReference String?
 	metadata          Json?
 	createdAt         DateTime                   @default(now())
+	deletedAt         DateTime?
 	driver            Driver?                    @relation(fields: [driverId], references: [id])
 	trip              Trip?                      @relation(fields: [tripId], references: [id])
 	user              User?                      @relation(fields: [userId], references: [id])
@@ -411,6 +412,7 @@ model FinancialTransaction {
 	@@index([driverId])
 	@@index([type])
 	@@index([status])
+	@@index([deletedAt])
 }
 
 model DriverPayout {
