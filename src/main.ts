@@ -18,8 +18,8 @@ async function bootstrap() {
 
 	if (process.env.NODE_ENV !== 'production') {
 		const swaggerConfig = new DocumentBuilder()
-			.setTitle('Ticketzone API')
-			.setDescription('API Ticketzone - Plataforma de venda de bilhetes')
+			.setTitle('FDA API')
+			.setDescription('API FDA - Plataforma de venda de bilhetes')
 			.setVersion('1.0.0')
 			.addBearerAuth()
 			.build();

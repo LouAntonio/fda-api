@@ -23,13 +23,12 @@ export class ResendService {
 		name?: string,
 		verificationLink?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Confirme seu email - Ticketzone',
+			subject: 'Confirme seu email - FDA',
 			html: `
 				<h1>Confirme seu email</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
@@ -46,50 +45,47 @@ export class ResendService {
 	}
 
 	async sendWelcomeEmail(to: string, name?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Bem-vindo ao Ticketzone!',
+			subject: 'Bem-vindo ao FDA!',
 			html: `
 				<h1>Bem-vindo, ${name ?? 'usuário'}!</h1>
-				<p>Sua conta foi criada com sucesso no Ticketzone.</p>
+				<p>Sua conta foi criada com sucesso no FDA.</p>
 				<p>Agora você pode comprar bilhetes, criar eventos e muito mais.</p>
 			`,
 		});
 	}
 
 	async sendEmailVerifiedEmail(to: string, name?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Email verificado - Ticketzone',
+			subject: 'Email verificado - FDA',
 			html: `
 				<h1>Email verificado</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
 				<p>O teu email foi verificado com sucesso.</p>
-				<p>Agora já podes aceder a todas as funcionalidades da plataforma Ticketzone.</p>
+				<p>Agora já podes aceder a todas as funcionalidades da plataforma FDA.</p>
 			`,
 		});
 	}
 
 	async sendRoleChangedEmail(to: string, name?: string, newRole?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'A sua função foi atualizada - Ticketzone',
+			subject: 'A sua função foi atualizada - FDA',
 			html: `
 				<h1>Função atualizada</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
-				<p>A sua função na plataforma Ticketzone foi alterada para <strong>${newRole}</strong>.</p>
+				<p>A sua função na plataforma FDA foi alterada para <strong>${newRole}</strong>.</p>
 				<p>Se tens alguma dúvida, contacta o suporte.</p>
 			`,
 		});
@@ -101,8 +97,7 @@ export class ResendService {
 		motive?: string,
 		bannedUntil?: Date,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 		const untilText = bannedUntil
 			? ` até ${bannedUntil.toLocaleDateString('pt-PT')}`
 			: ' por tempo indeterminado';
@@ -110,11 +105,11 @@ export class ResendService {
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'A sua conta foi banida - Ticketzone',
+			subject: 'A sua conta foi banida - FDA',
 			html: `
 				<h1>Conta banida</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
-				<p>A sua conta no Ticketzone foi banida${untilText}.</p>
+				<p>A sua conta no FDA foi banida${untilText}.</p>
 				<p><strong>Motivo:</strong> ${motive ?? 'Não especificado'}</p>
 				<p>Se achas que isto foi um erro, contacta o suporte.</p>
 			`,
@@ -122,33 +117,31 @@ export class ResendService {
 	}
 
 	async sendAccountUnbannedEmail(to: string, name?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'A sua conta foi reativada - Ticketzone',
+			subject: 'A sua conta foi reativada - FDA',
 			html: `
 				<h1>Conta reativada</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
-				<p>A sua conta no Ticketzone foi reativada. Já podes usar a plataforma normalmente.</p>
+				<p>A sua conta no FDA foi reativada. Já podes usar a plataforma normalmente.</p>
 			`,
 		});
 	}
 
 	async sendPromoterApprovedEmail(to: string, name?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Conta de promotor verificada - Ticketzone',
+			subject: 'Conta de promotor verificada - FDA',
 			html: `
 				<h1>Parabéns, ${name ?? 'promotor'}!</h1>
 				<p>A sua conta de promotor foi verificada com sucesso.</p>
-				<p>Já pode criar eventos e gerir os seus bilhetes na plataforma Ticketzone.</p>
+				<p>Já pode criar eventos e gerir os seus bilhetes na plataforma FDA.</p>
 			`,
 		});
 	}
@@ -158,17 +151,16 @@ export class ResendService {
 		name?: string,
 		motive?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Solicitação de promotor rejeitada - Ticketzone',
+			subject: 'Solicitação de promotor rejeitada - FDA',
 			html: `
 				<h1>Solicitação rejeitada</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
-				<p>Infelizmente a sua solicitação para se tornar promotor no Ticketzone foi rejeitada.</p>
+				<p>Infelizmente a sua solicitação para se tornar promotor no FDA foi rejeitada.</p>
 				<p><strong>Motivo:</strong> ${motive ?? 'Não especificado'}</p>
 				<p>Se achas que isto foi um erro, contacta o suporte.</p>
 			`,
@@ -180,13 +172,12 @@ export class ResendService {
 		name?: string,
 		resetLink?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Recuperação de senha - Ticketzone',
+			subject: 'Recuperação de senha - FDA',
 			html: `
 				<h1>Recuperação de senha</h1>
 				<p>Olá, ${name ?? 'usuário'}!</p>
@@ -208,14 +199,13 @@ export class ResendService {
 		eventTitle?: string,
 		eventId?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 		const adminUrl = `${process.env.FRONTEND_URL ?? ''}/admin/events/${eventId}`;
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Novo evento pendente de aprovação - Ticketzone',
+			subject: 'Novo evento pendente de aprovação - FDA',
 			html: `
 				<h1>Novo evento para revisão</h1>
 				<p>O promotor <strong>${promoterName ?? 'desconhecido'}</strong> criou um novo evento:</p>
@@ -230,17 +220,16 @@ export class ResendService {
 	}
 
 	async sendEventApproved(to: string, name?: string, eventTitle?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Evento aprovado - Ticketzone',
+			subject: 'Evento aprovado - FDA',
 			html: `
 				<h1>Evento aprovado</h1>
 				<p>Olá, ${name ?? 'promotor'}!</p>
-				<p>O teu evento <strong>${eventTitle ?? 'Sem título'}</strong> foi aprovado pela equipa Ticketzone.</p>
+				<p>O teu evento <strong>${eventTitle ?? 'Sem título'}</strong> foi aprovado pela equipa FDA.</p>
 				<p>O evento já está visível para o público.</p>
 			`,
 		});
@@ -252,13 +241,12 @@ export class ResendService {
 		eventTitle?: string,
 		motive?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Evento não aprovado - Ticketzone',
+			subject: 'Evento não aprovado - FDA',
 			html: `
 				<h1>Evento não aprovado</h1>
 				<p>Olá, ${name ?? 'promotor'}!</p>
@@ -276,8 +264,7 @@ export class ResendService {
 		totalAmount?: string,
 		items?: { name: string; qty: number; price: string }[],
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		const itemsHtml = (items ?? [])
 			.map(
@@ -289,7 +276,7 @@ export class ResendService {
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Pedido recebido - Ticketzone',
+			subject: 'Pedido recebido - FDA',
 			html: `
 				<h1>Pedido recebido</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
@@ -322,8 +309,7 @@ export class ResendService {
 		totalAmount?: string,
 		items?: { name: string; qty: number; price: string }[],
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		const itemsHtml = (items ?? [])
 			.map(
@@ -335,7 +321,7 @@ export class ResendService {
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Pedido confirmado - Ticketzone',
+			subject: 'Pedido confirmado - FDA',
 			html: `
 				<h1>Pedido confirmado</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
@@ -361,13 +347,12 @@ export class ResendService {
 	}
 
 	async sendEventCancelled(to: string, name?: string, eventTitle?: string) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: 'Evento cancelado - Ticketzone',
+			subject: 'Evento cancelado - FDA',
 			html: `
 				<h1>Evento cancelado</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
@@ -384,13 +369,12 @@ export class ResendService {
 		eventTitle?: string,
 		promoterName?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: `Vendas pausadas - ${eventTitle ?? 'Evento'} - Ticketzone`,
+			subject: `Vendas pausadas - ${eventTitle ?? 'Evento'} - FDA`,
 			html: `
 				<h1>Vendas pausadas</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
@@ -407,13 +391,12 @@ export class ResendService {
 		eventTitle?: string,
 		promoterName?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: `Vendas retomadas - ${eventTitle ?? 'Evento'} - Ticketzone`,
+			subject: `Vendas retomadas - ${eventTitle ?? 'Evento'} - FDA`,
 			html: `
 				<h1>Vendas retomadas</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
@@ -429,18 +412,17 @@ export class ResendService {
 		eventTitle?: string,
 		promoterName?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: `Foste adicionado como validador - ${eventTitle ?? 'Evento'} - Ticketzone`,
+			subject: `Foste adicionado como validador - ${eventTitle ?? 'Evento'} - FDA`,
 			html: `
 				<h1>Validador de bilhetes</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>
 				<p>O promotor <strong>${promoterName ?? 'desconhecido'}</strong> adicionou-te como validador de bilhetes para o evento <strong>${eventTitle ?? 'Sem título'}</strong>.</p>
-				<p>Agora podes validar bilhetes neste evento usando a aplicação Ticketzone.</p>
+				<p>Agora podes validar bilhetes neste evento usando a aplicação FDA.</p>
 			`,
 		});
 	}
@@ -450,13 +432,12 @@ export class ResendService {
 		name?: string,
 		eventTitle?: string,
 	) {
-		const from =
-			process.env.RESEND_FROM ?? 'Ticketzone <noreply@Ticketzone.com>';
+		const from = process.env.RESEND_FROM ?? 'FDA <noreply@FDA.com>';
 
 		return this.sendEmail({
 			from,
 			to,
-			subject: `Removido como validador - ${eventTitle ?? 'Evento'} - Ticketzone`,
+			subject: `Removido como validador - ${eventTitle ?? 'Evento'} - FDA`,
 			html: `
 				<h1>Removido como validador</h1>
 				<p>Olá, ${name ?? 'utilizador'}!</p>

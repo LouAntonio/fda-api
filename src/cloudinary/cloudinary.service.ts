@@ -19,8 +19,7 @@ export class CloudinaryService {
 			'CLOUDINARY_API_SECRET',
 		);
 		this.defaultFolder =
-			this.configService.get<string>('CLOUDINARY_UPLOAD_FOLDER') ??
-			'Ticketzone';
+			this.configService.get<string>('CLOUDINARY_UPLOAD_FOLDER') ?? 'FDA';
 
 		cloudinary.config({
 			cloud_name: this.cloudName,
