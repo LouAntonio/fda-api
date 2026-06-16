@@ -16,6 +16,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CouponsService } from '../coupons/coupons.service';
+import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { CreateTripDto, CoordsDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
@@ -105,6 +106,7 @@ export class TripsService {
 		private prisma: PrismaService,
 		private logger: LoggerService,
 		private couponsService: CouponsService,
+		private tripGateway: TripGatewayService,
 	) {}
 
 	async create(dto: CreateTripDto, userId: string, userRole: UserRole) {
@@ -239,6 +241,11 @@ export class TripsService {
 		if (estimate.couponId) {
 			await this.couponsService.incrementUsage(estimate.couponId);
 		}
+
+		this.tripGateway.emitTripStatus(trip.id, TripStatus.REQUESTED, {
+			clientId,
+			serviceType: dto.serviceType,
+		});
 
 		this.logger.log(
 			`Trip ${trip.id} created for client ${clientId} (${dto.serviceType})`,
@@ -650,6 +657,31 @@ export class TripsService {
 
 		await this.createTripEvent(id, statusEventMap[nextStatus], actorUserId);
 
+		this.tripGateway.emitTripStatus(id, nextStatus);
+
+		if (
+			nextStatus === TripStatus.ACCEPTED &&
+			trip.driverId
+		) {
+			const driver = await this.prisma.client.driver.findUnique({
+				where: { id: trip.driverId },
+				select: {
+					id: true,
+					user: { select: { name: true, phoneNumber: true } },
+				},
+			});
+			if (driver) {
+				this.tripGateway.emitDriverAssigned(
+					id,
+					{
+						id: driver.id,
+						name: driver.user.name,
+						phoneNumber: driver.user.phoneNumber,
+					},
+				);
+			}
+		}
+
 		this.logger.log(
 			`Trip ${id} status: ${currentStatus} -> ${nextStatus}`,
 			'TripsService',
@@ -711,6 +743,8 @@ export class TripsService {
 						: TripEventType.TRIP_REQUESTED,
 			actorUserId,
 		);
+
+		this.tripGateway.emitDeliveryStatus(id, nextDeliveryStatus);
 
 		this.logger.log(
 			`Trip ${id} delivery status: ${currentDeliveryStatus} -> ${nextDeliveryStatus}`,
@@ -787,6 +821,11 @@ export class TripsService {
 
 		await this.createTripEvent(id, TripEventType.TRIP_CANCELLED, userId);
 
+		this.tripGateway.emitTripStatus(id, TripStatus.CANCELLED, {
+			cancelReason,
+			cancelledBy: userId,
+		});
+
 		this.logger.log(
 			`Trip ${id} cancelled by ${userId}: ${cancelReason}`,
 			'TripsService',
@@ -830,6 +869,12 @@ export class TripsService {
 				},
 			});
 		}
+
+		this.tripGateway.sendToTripRoom(id, 'trip:payment_update', {
+			tripId: id,
+			paymentStatus: dto.paymentStatus,
+			updatedAt: new Date().toISOString(),
+		});
 
 		this.logger.log(
 			`Trip ${id} payment status: ${trip.paymentStatus} -> ${dto.paymentStatus}`,

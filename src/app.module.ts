@@ -15,6 +15,7 @@ import { FleetsModule } from './fleets/fleets.module';
 import { PriceConfigModule } from './price-config/price-config.module';
 import { ZonesModule } from './zones/zones.module';
 import { TripsModule } from './trips/trips.module';
+import { TripGatewayModule } from './trip-gateway/trip-gateway.module';
 import { TripAssignmentsModule } from './trip-assignments/trip-assignments.module';
 import { DeliveryDetailsModule } from './delivery-details/delivery-details.module';
 import { TripEventsModule } from './trip-events/trip-events.module';
@@ -51,6 +52,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		PriceConfigModule,
 		ZonesModule,
 		TripsModule,
+		TripGatewayModule,
 		TripAssignmentsModule,
 		DeliveryDetailsModule,
 		TripEventsModule,
