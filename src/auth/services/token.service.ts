@@ -26,8 +26,14 @@ export class TokenService {
 		return { accessToken, refreshToken };
 	}
 
-	private generateAccessToken(user: { id: string; email?: string | null }): string {
-		const payload: TokenPayload = { sub: user.id, email: user.email ?? undefined };
+	private generateAccessToken(user: {
+		id: string;
+		email?: string | null;
+	}): string {
+		const payload: TokenPayload = {
+			sub: user.id,
+			email: user.email ?? undefined,
+		};
 		return this.jwtService.sign(payload, {
 			expiresIn: (process.env.JWT_EXPIRES_IN ?? '15m') as never,
 		});

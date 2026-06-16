@@ -1,4 +1,13 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from 'class-validator';
+import {
+	IsOptional,
+	IsString,
+	IsInt,
+	Min,
+	Max,
+	IsEnum,
+	IsBoolean,
+	IsDateString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { UserRole, UserStatus } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -22,7 +31,7 @@ export class ListUsersDto {
 	@Max(100)
 	limit?: number;
 
-	@ApiPropertyOptional({ description: 'Pesquisa por texto' })
+	@ApiPropertyOptional({ description: 'Pesquisa por texto (nome, email)' })
 	@IsOptional()
 	@IsString()
 	search?: string;
@@ -39,4 +48,60 @@ export class ListUsersDto {
 	@IsOptional()
 	@IsEnum(UserRole)
 	role?: UserRole;
+
+	@ApiPropertyOptional({ description: 'Filtrar por telefone' })
+	@IsOptional()
+	@IsString()
+	phoneNumber?: string;
+
+	@ApiPropertyOptional({ description: 'Filtrar por apelido' })
+	@IsOptional()
+	@IsString()
+	surname?: string;
+
+	@ApiPropertyOptional({ description: 'Filtrar por email verificado' })
+	@IsOptional()
+	@Type(() => Boolean)
+	@IsBoolean()
+	emailVerified?: boolean;
+
+	@ApiPropertyOptional({ description: 'Filtrar por telefone verificado' })
+	@IsOptional()
+	@Type(() => Boolean)
+	@IsBoolean()
+	phoneNumberVerified?: boolean;
+
+	@ApiPropertyOptional({ description: 'Data início (ISO 8601)' })
+	@IsOptional()
+	@IsDateString()
+	dateFrom?: string;
+
+	@ApiPropertyOptional({ description: 'Data fim (ISO 8601)' })
+	@IsOptional()
+	@IsDateString()
+	dateTo?: string;
+
+	@ApiPropertyOptional({
+		description: 'Incluir utilizadores deletados (soft delete)',
+	})
+	@IsOptional()
+	@Type(() => Boolean)
+	@IsBoolean()
+	includeDeleted?: boolean;
+
+	@ApiPropertyOptional({
+		enum: ['createdAt', 'name', 'role', 'status'],
+		description: 'Campo para ordenar',
+	})
+	@IsOptional()
+	@IsString()
+	sortBy?: 'createdAt' | 'name' | 'role' | 'status';
+
+	@ApiPropertyOptional({
+		enum: ['asc', 'desc'],
+		description: 'Direção da ordenação',
+	})
+	@IsOptional()
+	@IsString()
+	sortOrder?: 'asc' | 'desc';
 }

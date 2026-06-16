@@ -11,25 +11,25 @@ function createExtendedClient() {
 	return new PrismaClient({ adapter }).$extends({
 		query: {
 			$allModels: {
-			$allOperations(params: any) {
-				const { operation, args, query } = params;
-				if (
-					(operation === 'create' && !args.data['id']) ||
-					(operation === 'upsert' && !args.create['id'])
-				) {
-					args.data['id'] = uuidv7();
-				}
-				if (operation === 'createMany') {
-					const data = Array.isArray(args.data)
-						? args.data
-						: [args.data];
-					for (const item of data) {
-						if (!item['id']) {
-							item['id'] = uuidv7();
+				$allOperations(params: any) {
+					const { operation, args, query } = params;
+					if (
+						(operation === 'create' && !args.data['id']) ||
+						(operation === 'upsert' && !args.create['id'])
+					) {
+						args.data['id'] = uuidv7();
+					}
+					if (operation === 'createMany') {
+						const data = Array.isArray(args.data)
+							? args.data
+							: [args.data];
+						for (const item of data) {
+							if (!item['id']) {
+								item['id'] = uuidv7();
+							}
 						}
 					}
-				}
-				return query(args);
+					return query(args);
 				},
 			},
 		},

@@ -30,6 +30,6 @@ import { ResendModule } from '../email/resend.module';
 		GoogleAuthService,
 		TokenService,
 	],
-	exports: [AuthService, JwtModule, PassportModule],
+	exports: [AuthService, JwtModule, PassportModule, BcryptService],
 })
 export class AuthModule {}
