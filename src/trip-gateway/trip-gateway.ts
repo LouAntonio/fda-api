@@ -14,6 +14,8 @@ interface JwtPayload {
 	role: string;
 }
 
+type AuthenticatedSocket = Socket & { user: JwtPayload };
+
 @WebSocketGateway({
 	namespace: '/trips',
 	cors: {
@@ -27,7 +29,7 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	private userSockets = new Map<string, Set<string>>();
 
-	async handleConnection(client: Socket) {
+	handleConnection(client: AuthenticatedSocket) {
 		try {
 			const token =
 				(client.handshake.auth?.token as string) ??
@@ -47,7 +49,7 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			}
 
 			const decoded = jwt.verify(token, secret) as JwtPayload;
-			(client as any).user = decoded;
+			client.user = decoded;
 
 			const userId = decoded.sub;
 			if (!this.userSockets.has(userId)) {
@@ -55,15 +57,15 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			}
 			this.userSockets.get(userId)!.add(client.id);
 
-			client.join(`user:${userId}`);
+			void client.join(`user:${userId}`);
 		} catch {
 			client.emit('error', { message: 'Token inválido ou expirado' });
 			client.disconnect();
 		}
 	}
 
-	handleDisconnect(client: Socket) {
-		const user = (client as any).user as JwtPayload | undefined;
+	handleDisconnect(client: AuthenticatedSocket) {
+		const user = client.user;
 		if (user) {
 			const sockets = this.userSockets.get(user.sub);
 			if (sockets) {
@@ -77,12 +79,12 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
 	@SubscribeMessage('join:trip')
 	handleJoinTrip(client: Socket, tripId: string) {
-		client.join(`trip:${tripId}`);
+		void client.join(`trip:${tripId}`);
 	}
 
 	@SubscribeMessage('leave:trip')
 	handleLeaveTrip(client: Socket, tripId: string) {
-		client.leave(`trip:${tripId}`);
+		void client.leave(`trip:${tripId}`);
 	}
 
 	sendToTripRoom(tripId: string, event: string, data: unknown) {

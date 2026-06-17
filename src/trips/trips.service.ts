@@ -659,10 +659,7 @@ export class TripsService {
 
 		this.tripGateway.emitTripStatus(id, nextStatus);
 
-		if (
-			nextStatus === TripStatus.ACCEPTED &&
-			trip.driverId
-		) {
+		if (nextStatus === TripStatus.ACCEPTED && trip.driverId) {
 			const driver = await this.prisma.client.driver.findUnique({
 				where: { id: trip.driverId },
 				select: {
@@ -671,14 +668,11 @@ export class TripsService {
 				},
 			});
 			if (driver) {
-				this.tripGateway.emitDriverAssigned(
-					id,
-					{
-						id: driver.id,
-						name: driver.user.name,
-						phoneNumber: driver.user.phoneNumber,
-					},
-				);
+				this.tripGateway.emitDriverAssigned(id, {
+					id: driver.id,
+					name: driver.user.name,
+					phoneNumber: driver.user.phoneNumber,
+				});
 			}
 		}
 

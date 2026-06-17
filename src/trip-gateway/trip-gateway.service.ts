@@ -5,7 +5,11 @@ import { TripGateway } from './trip-gateway';
 export class TripGatewayService {
 	constructor(private gateway: TripGateway) {}
 
-	emitTripStatus(tripId: string, status: string, data?: Record<string, unknown>) {
+	emitTripStatus(
+		tripId: string,
+		status: string,
+		data?: Record<string, unknown>,
+	) {
 		this.gateway.sendToTripRoom(tripId, 'trip:status', {
 			tripId,
 			status,
@@ -17,7 +21,12 @@ export class TripGatewayService {
 	emitDriverAssigned(
 		tripId: string,
 		driver: { id: string; name: string; phoneNumber: string | null },
-		vehicle?: { plateNumber: string; brand: string; model: string; color: string },
+		vehicle?: {
+			plateNumber: string;
+			brand: string;
+			model: string;
+			color: string;
+		},
 	) {
 		this.gateway.sendToTripRoom(tripId, 'trip:driver_assigned', {
 			tripId,
@@ -26,7 +35,11 @@ export class TripGatewayService {
 		});
 	}
 
-	sendToTripRoom(tripId: string, event: string, data: Record<string, unknown>) {
+	sendToTripRoom(
+		tripId: string,
+		event: string,
+		data: Record<string, unknown>,
+	) {
 		this.gateway.sendToTripRoom(tripId, event, data);
 	}
 
