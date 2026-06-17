@@ -26,29 +26,43 @@ export class ZonesService {
 		private logger: LoggerService,
 	) {}
 
+	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+
+	private async findByIdInternal(id: string) {
+		return (this.prisma.client.zone as any).findUnique({
+			where: { id },
+			select: defaultZoneSelect,
+		}) as Promise<{
+			id: string;
+			name: string;
+			surgeMultiplier: number;
+			isActive: boolean;
+			createdAt: Date;
+		} | null>;
+	}
+
 	async create(dto: CreateZoneDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const zone = await (this.prisma.client.zone as any).create({
-			data: {
-				id: uuidv7(),
-				name: dto.name,
-				boundary: polygonToWkt(dto.boundary),
-				surgeMultiplier: dto.surgeMultiplier ?? 1.0,
-				isActive: dto.isActive ?? true,
-			},
-			select: {
-				...defaultZoneSelect,
-				boundary: true,
-			},
-		});
+		const id = uuidv7();
+		const wkt = polygonToWkt(dto.boundary);
+
+		await this.prisma.$queryRawUnsafe(
+			`INSERT INTO "Zone" (id, name, boundary, "surgeMultiplier", "isActive", "createdAt")
+			 VALUES ($1, $2, ST_GeomFromText($3, 4326), $4, $5, NOW())`,
+			id,
+			dto.name,
+			wkt,
+			dto.surgeMultiplier ?? 1.0,
+			dto.isActive ?? true,
+		);
+
+		const zone = await this.findByIdInternal(id);
 
 		this.logger.log(
-			`Zone created: ${zone.name} (surge: ${zone.surgeMultiplier})`,
+			`Zone created: ${zone!.name} (surge: ${zone!.surgeMultiplier})`,
 			'ZonesService',
 		);
 
-		return zone;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+		return zone!;
 	}
 
 	async list(dto: ListZonesDto) {
@@ -69,7 +83,6 @@ export class ZonesService {
 		const orderBy: Record<string, string> = {};
 		orderBy[dto.sortBy ?? 'createdAt'] = dto.sortOrder ?? 'desc';
 
-		/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 		const [zones, total] = await Promise.all([
 			(this.prisma.client.zone as any).findMany({
 				where,
@@ -84,7 +97,6 @@ export class ZonesService {
 				where,
 			}) as Promise<number>,
 		]);
-		/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 		return {
 			zones,
@@ -96,109 +108,121 @@ export class ZonesService {
 	}
 
 	async findById(id: string) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const zone = await (this.prisma.client.zone as any).findUnique({
-			where: { id },
-			select: {
-				...defaultZoneSelect,
-				boundary: true,
-			},
-		});
+		const zone = await this.findByIdInternal(id);
 
 		if (!zone) {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		return zone;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+		const [raw] = (await this.prisma.$queryRawUnsafe(
+			`SELECT COALESCE(
+				(
+					SELECT json_agg(
+						json_build_array(
+							ROUND(ST_X((dp).geom)::numeric, 6),
+							ROUND(ST_Y((dp).geom)::numeric, 6)
+						)
+					)
+					FROM (
+						SELECT (ST_DumpPoints(z.boundary::geometry)::geometry_dump).geom AS geom
+						FROM "Zone" z2 WHERE z2.id = $1
+					) AS dp
+				),
+				'[]'::json
+			) AS boundary
+			FROM "Zone" z WHERE z.id = $1`,
+			id,
+		)) as any[];
+
+		return {
+			...zone,
+			boundary: raw?.boundary ?? [],
+		};
 	}
 
 	async update(id: string, dto: UpdateZoneDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const existing = await (this.prisma.client.zone as any).findUnique({
-			where: { id },
-		});
+		const existing = await this.findByIdInternal(id);
 
 		if (!existing) {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		const data: Record<string, unknown> = {};
+		const setClauses: string[] = [];
+		const params: unknown[] = [];
+		let idx = 1;
 
-		if (dto.name !== undefined) data.name = dto.name;
-		if (dto.boundary !== undefined)
-			data.boundary = polygonToWkt(dto.boundary);
-		if (dto.surgeMultiplier !== undefined)
-			data.surgeMultiplier = dto.surgeMultiplier;
-		if (dto.isActive !== undefined) data.isActive = dto.isActive;
+		if (dto.name !== undefined) {
+			setClauses.push(`name = $${idx++}`);
+			params.push(dto.name);
+		}
+		if (dto.boundary !== undefined) {
+			setClauses.push(`boundary = ST_GeomFromText($${idx++}, 4326)`);
+			params.push(polygonToWkt(dto.boundary));
+		}
+		if (dto.surgeMultiplier !== undefined) {
+			setClauses.push(`"surgeMultiplier" = $${idx++}`);
+			params.push(dto.surgeMultiplier);
+		}
+		if (dto.isActive !== undefined) {
+			setClauses.push(`"isActive" = $${idx++}`);
+			params.push(dto.isActive);
+		}
 
-		if (Object.keys(data).length === 0) {
+		if (setClauses.length === 0) {
 			throw new BadRequestException('Nenhum dado para atualizar');
 		}
 
-		const updated = await (this.prisma.client.zone as any).update({
-			where: { id },
-			data,
-			select: {
-				...defaultZoneSelect,
-				boundary: true,
-			},
-		});
+		params.push(id);
+		const sql = `UPDATE "Zone" SET ${setClauses.join(', ')} WHERE id = $${idx}`;
+		await this.prisma.$queryRawUnsafe(sql, ...params);
 
-		this.logger.log(`Zone ${id} updated: ${updated.name}`, 'ZonesService');
+		const updated = await this.findByIdInternal(id);
 
-		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+		this.logger.log(`Zone ${id} updated: ${updated!.name}`, 'ZonesService');
+
+		return updated!;
 	}
 
 	async remove(id: string) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-		const zone = await (this.prisma.client.zone as any).findUnique({
-			where: { id },
-		});
+		const zone = await this.findByIdInternal(id);
 
 		if (!zone) {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		await (this.prisma.client.zone as any).update({
-			where: { id },
-			data: { isActive: false },
-		});
+		await this.prisma.$queryRawUnsafe(
+			`UPDATE "Zone" SET "isActive" = false WHERE id = $1`,
+			id,
+		);
 
 		this.logger.log(`Zone ${id} deactivated: ${zone.name}`, 'ZonesService');
 
 		return {
 			msg: 'Zona removida com sucesso',
 		};
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 	}
 
 	async toggleActive(id: string) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const zone = await (this.prisma.client.zone as any).findUnique({
-			where: { id },
-		});
+		const zone = await this.findByIdInternal(id);
 
 		if (!zone) {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		const updated = await (this.prisma.client.zone as any).update({
-			where: { id },
-			data: { isActive: !zone.isActive },
-			select: {
-				...defaultZoneSelect,
-				boundary: true,
-			},
-		});
+		await this.prisma.$queryRawUnsafe(
+			`UPDATE "Zone" SET "isActive" = NOT "isActive" WHERE id = $1`,
+			id,
+		);
+
+		const updated = await this.findByIdInternal(id);
 
 		this.logger.log(
-			`Zone ${id} is now ${updated.isActive ? 'active' : 'inactive'}`,
+			`Zone ${id} is now ${updated!.isActive ? 'active' : 'inactive'}`,
 			'ZonesService',
 		);
 
-		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+		return updated!;
 	}
+
+	/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 }

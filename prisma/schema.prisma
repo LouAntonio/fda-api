@@ -263,6 +263,7 @@ model Zone {
 	boundary        Unsupported("geography")
 	surgeMultiplier Float                    @default(1.0)
 	isActive        Boolean                  @default(true)
+	createdAt       DateTime                 @default(now())
 
 	@@index([boundary], type: Gist)
 }
