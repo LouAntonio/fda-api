@@ -898,9 +898,9 @@ export class TripsService {
 		const groupBy = dto.groupBy ?? 'day';
 
 		const truncMap: Record<string, string> = {
-			day: 'DATE',
-			week: "DATE_TRUNC('week'",
-			month: "DATE_TRUNC('month'",
+			day: "DATE(",
+			week: "DATE_TRUNC('week', ",
+			month: "DATE_TRUNC('month', ",
 		};
 
 		const truncFn = truncMap[groupBy];
@@ -921,7 +921,7 @@ export class TripsService {
 			>
 		)(
 			`SELECT 
-				${truncFn}("createdAt")) as period,
+				${truncFn}"createdAt") as period,
 				COUNT(*)::int as "totalTrips",
 				COUNT(*) FILTER (WHERE status = 'COMPLETED')::int as "completedTrips",
 				COUNT(*) FILTER (WHERE status = 'CANCELLED')::int as "cancelledTrips",

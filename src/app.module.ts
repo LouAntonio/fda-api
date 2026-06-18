@@ -36,7 +36,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		ThrottlerModule.forRoot([
 			{
 				ttl: Number(process.env.THROTTLE_TTL ?? 60000),
-				limit: Number(process.env.THROTTLE_LIMIT ?? 10),
+				limit: Number(process.env.THROTTLE_LIMIT ?? 100),
 			},
 		]),
 		PrismaModule,
