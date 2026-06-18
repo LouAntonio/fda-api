@@ -26,7 +26,7 @@ export class ListDriverPayoutsDto {
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
-	@Max(100)
+	@Max(500)
 	limit?: number;
 
 	@ApiPropertyOptional({ description: 'Filtrar por motorista (ID)' })

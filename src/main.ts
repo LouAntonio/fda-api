@@ -10,8 +10,12 @@ async function bootstrap() {
 	const logger = app.get(LoggerService);
 	app.useLogger(logger);
 
+	const frontendUrls = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+		.split(',')
+		.map((s) => s.trim());
+
 	app.enableCors({
-		origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+		origin: frontendUrls,
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		credentials: true,
 	});

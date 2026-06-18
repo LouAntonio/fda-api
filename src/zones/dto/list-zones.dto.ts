@@ -18,7 +18,7 @@ export class ListZonesDto {
 	@Type(() => Number)
 	@IsInt()
 	@Min(1)
-	@Max(100)
+	@Max(500)
 	limit?: number;
 
 	@ApiPropertyOptional({ description: 'Pesquisa por nome da zona' })
