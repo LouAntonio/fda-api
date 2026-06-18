@@ -3,6 +3,7 @@ import {
 	IsOptional,
 	IsEnum,
 	IsInt,
+	IsUUID,
 	Min,
 	Max,
 	MinLength,
@@ -17,7 +18,7 @@ export class CreateVehicleDto {
 		example: 'uuid-do-driver',
 		description: 'ID do motorista proprietário',
 	})
-	@IsString()
+	@IsUUID()
 	driverId!: string;
 
 	@ApiProperty({

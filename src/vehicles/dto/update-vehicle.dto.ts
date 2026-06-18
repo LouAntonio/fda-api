@@ -3,6 +3,7 @@ import {
 	IsOptional,
 	IsEnum,
 	IsInt,
+	IsUUID,
 	Min,
 	Max,
 	MinLength,
@@ -18,7 +19,7 @@ export class UpdateVehicleDto {
 		description: 'ID do motorista proprietário',
 	})
 	@IsOptional()
-	@IsString()
+	@IsUUID()
 	driverId?: string;
 
 	@ApiPropertyOptional({ example: 'AB-12-CD', description: 'Matrícula' })

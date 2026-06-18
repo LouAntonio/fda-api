@@ -18,6 +18,7 @@ async function bootstrap() {
 		origin: frontendUrls,
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		credentials: true,
+		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 	});
 
 	if (process.env.NODE_ENV !== 'production') {
