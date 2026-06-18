@@ -26,6 +26,7 @@ import { DisputesModule } from './disputes/disputes.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -63,7 +64,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		ReviewsModule,
 		AuditLogsModule,
 	],
-	controllers: [AppController],
+	controllers: [AppController, HealthController],
 	providers: [
 		AppService,
 		{
