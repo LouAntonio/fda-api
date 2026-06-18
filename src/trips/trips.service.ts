@@ -898,7 +898,7 @@ export class TripsService {
 		const groupBy = dto.groupBy ?? 'day';
 
 		const truncMap: Record<string, string> = {
-			day: "DATE(",
+			day: 'DATE(',
 			week: "DATE_TRUNC('week', ",
 			month: "DATE_TRUNC('month', ",
 		};

@@ -6,7 +6,6 @@ import {
 	MinLength,
 	MaxLength,
 	ValidateNested,
-	ArrayMinSize,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
