@@ -21,7 +21,7 @@ async function bootstrap() {
 		allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 	});
 
-	if (process.env.NODE_ENV !== 'production') {
+	if (process.env.NODE_ENV === 'development') {
 		const swaggerConfig = new DocumentBuilder()
 			.setTitle('FDA API')
 			.setDescription('API FDA - Plataforma de venda de bilhetes')

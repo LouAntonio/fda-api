@@ -151,7 +151,7 @@ model Driver {
 	availability          DriverAvailabilityStatus @default(OFFLINE)
 	biNumber              String                   @unique
 	licenseNumber         String                   @unique
-	ratingAverage         Float                    @default(5.0)
+	ratingAverage         Float                    @default(0)
 	ratingCount           Int                      @default(0)
 	completedTripsCount   Int                      @default(0)
 	cancelledTripsCount   Int                      @default(0)
