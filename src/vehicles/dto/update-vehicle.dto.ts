@@ -22,11 +22,11 @@ export class UpdateVehicleDto {
 	@IsUUID()
 	driverId?: string;
 
-	@ApiPropertyOptional({ example: 'AB-12-CD', description: 'Matrícula' })
+	@ApiPropertyOptional({ example: 'AB-12-34-CD', description: 'Matrícula' })
 	@IsOptional()
 	@IsString()
-	@Matches(/^[A-Z]{2}-\d{2}-[A-Z]{2}$/, {
-		message: 'Matrícula deve estar no formato AA-99-AA',
+	@Matches(/^[A-Z]{2}-\d{2}-\d{2}-[A-Z]{2}$/, {
+		message: 'Matrícula deve estar no formato AB-12-34-CD',
 	})
 	plateNumber?: string;
 
