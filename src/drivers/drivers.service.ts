@@ -84,18 +84,36 @@ export class DriversService {
 			);
 		}
 
-		const driver = await this.prisma.client.driver.create({
-			data: {
-				id: uuidv7(),
-				userId: dto.userId,
-				biNumber: dto.biNumber,
-				licenseNumber: dto.licenseNumber,
-			},
-		});
+		const driver = await this.prisma.client.$transaction(async (tx) => {
+			const d = await tx.driver.create({
+				data: {
+					id: uuidv7(),
+					userId: dto.userId,
+					biNumber: dto.biNumber,
+					licenseNumber: dto.licenseNumber,
+				},
+			});
 
-		await this.prisma.client.user.update({
-			where: { id: dto.userId },
-			data: { role: 'DRIVER' },
+			await tx.user.update({
+				where: { id: dto.userId },
+				data: { role: 'DRIVER' },
+			});
+
+			if (dto.documents?.length) {
+				await tx.driverDocument.createMany({
+					data: dto.documents.map((doc) => ({
+						id: uuidv7(),
+						driverId: d.id,
+						type: doc.type,
+						fileUrl: doc.fileUrl,
+						expiryDate: doc.expiryDate
+							? new Date(doc.expiryDate)
+							: undefined,
+					})),
+				});
+			}
+
+			return d;
 		});
 
 		this.logger.log(
