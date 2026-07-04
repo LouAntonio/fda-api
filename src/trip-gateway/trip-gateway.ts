@@ -16,12 +16,6 @@ interface JwtPayload {
 
 type AuthenticatedSocket = Socket & { user: JwtPayload };
 
-interface ActiveRoom {
-	room: string;
-	type: 'trip' | 'user';
-	identifier: string;
-}
-
 @WebSocketGateway({
 	namespace: '/trips',
 	cors: {

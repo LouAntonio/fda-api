@@ -1,44 +1,16 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { uuidv7 } from 'uuidv7';
 
 function createExtendedClient() {
 	const adapter = new PrismaPg({
 		connectionString: process.env.DATABASE_URL!,
 	});
 
-	return new PrismaClient({ adapter }).$extends({
-		query: {
-			$allModels: {
-				$allOperations(params: any) {
-					/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
-					const { operation, args, query } = params;
-					if (
-						(operation === 'create' && !args.data['id']) ||
-						(operation === 'upsert' && !args.create['id'])
-					) {
-						args.data['id'] = uuidv7();
-					}
-					if (operation === 'createMany') {
-						const data = Array.isArray(args.data)
-							? args.data
-							: [args.data];
-						for (const item of data) {
-							if (!item['id']) {
-								item['id'] = uuidv7();
-							}
-						}
-					}
-					return query(args);
-					/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call */
-				},
-			},
-		},
-	});
+	return new PrismaClient({ adapter });
 }
 
-export type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>;
+export type ExtendedPrismaClient = PrismaClient;
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {

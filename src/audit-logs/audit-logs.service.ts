@@ -40,8 +40,8 @@ export class AuditLogsService {
 				action: dto.action,
 				entity: dto.entity,
 				entityId: dto.entityId,
-				oldValue: dto.oldValue ?? undefined,
-				newValue: dto.newValue ?? undefined,
+				oldValue: (dto.oldValue ?? undefined) as any,
+				newValue: (dto.newValue ?? undefined) as any,
 			},
 			select: defaultAuditLogSelect,
 		});

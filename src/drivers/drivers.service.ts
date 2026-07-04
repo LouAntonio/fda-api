@@ -419,10 +419,7 @@ export class DriversService {
 			throw new NotFoundException('Motorista não encontrado');
 		}
 
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-		const location = await (
-			this.prisma.client.driverLocation as any
-		).upsert({
+		const location = await this.prisma.client.driverLocation.upsert({
 			where: { driverId },
 			update: {
 				location: coordsToWkt(dto.lat, dto.lng),
@@ -438,14 +435,12 @@ export class DriversService {
 				accuracy: dto.accuracy,
 			},
 		});
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 		await this.prisma.client.driver.update({
 			where: { id: driverId },
 			data: { lastLocationAt: new Date() },
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return location;
 	}
 

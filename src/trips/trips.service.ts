@@ -12,6 +12,7 @@ import {
 	ServiceType,
 	VehicleType,
 	DeliveryStatus,
+	Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -110,7 +111,6 @@ export class TripsService {
 	) {}
 
 	async create(dto: CreateTripDto, userId: string, userRole: UserRole) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 		let clientId = userId;
 
 		if (userRole !== UserRole.CLIENT && dto['clientId']) {
@@ -118,7 +118,7 @@ export class TripsService {
 		}
 
 		if (dto.idempotencyKey) {
-			const existing = await (this.prisma.client.trip as any).findUnique({
+			const existing = await this.prisma.client.trip.findUnique({
 				where: { idempotencyKey: dto.idempotencyKey },
 				select: { id: true },
 			});
@@ -143,9 +143,9 @@ export class TripsService {
 			userId: clientId,
 		});
 
-		const tripData: Record<string, unknown> = {
+		const tripData: Prisma.TripCreateInput = {
 			id: uuidv7(),
-			clientId,
+			client: { connect: { id: clientId } },
 			serviceType: dto.serviceType,
 			status: TripStatus.REQUESTED,
 			pickupCoords: coordsToWkt(
@@ -163,7 +163,9 @@ export class TripsService {
 			paymentMethod: dto.paymentMethod,
 			estimatedDistanceKm: estimate.estimatedDistanceKm,
 			estimatedDurationMin: estimate.estimatedDurationMin,
-			priceConfigId: estimate.priceConfigId,
+			priceConfig: estimate.priceConfigId
+				? { connect: { id: estimate.priceConfigId } }
+				: undefined,
 			pickupZoneId: estimate.pickupZoneId,
 			dropoffZoneId: estimate.dropoffZoneId,
 			surgeMultiplierApplied: estimate.surgeMultiplierApplied,
@@ -173,7 +175,9 @@ export class TripsService {
 			driverEarnings: estimate.driverEarnings,
 			totalPrice: estimate.totalPrice,
 			discountAmount: estimate.discountAmount,
-			couponId: estimate.couponId ?? null,
+			coupon: estimate.couponId
+				? { connect: { id: estimate.couponId } }
+				: undefined,
 		};
 
 		if (dto.idempotencyKey) {
@@ -203,7 +207,7 @@ export class TripsService {
 			tripData.deliveryStatus = DeliveryStatus.WAITING_PICKUP;
 		}
 
-		const trip = await (this.prisma.client.trip as any).create({
+		const trip = await this.prisma.client.trip.create({
 			data: tripData,
 			select: {
 				...defaultTripSelect,
@@ -220,7 +224,7 @@ export class TripsService {
 		});
 
 		if (dto.serviceType === ServiceType.DELIVERY && dto.deliveryDetails) {
-			await (this.prisma.client.deliveryDetails as any).create({
+			await this.prisma.client.deliveryDetails.create({
 				data: {
 					id: uuidv7(),
 					tripId: trip.id,
@@ -253,7 +257,6 @@ export class TripsService {
 		);
 
 		return trip;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 	}
 
 	async list(dto: ListTripsDto, userId: string, userRole: UserRole) {
@@ -261,7 +264,7 @@ export class TripsService {
 		const limit = dto.limit ?? 20;
 		const skip = (page - 1) * limit;
 
-		const where: Record<string, unknown> = {};
+		const where: Prisma.TripWhereInput = {};
 
 		if (userRole === UserRole.CLIENT) {
 			where.clientId = userId;
@@ -273,7 +276,13 @@ export class TripsService {
 			if (driver) {
 				where.driverId = driver.id;
 			} else {
-				where.id = null;
+				return {
+					trips: [],
+					total: 0,
+					page,
+					limit,
+					totalPages: 0,
+				};
 			}
 		}
 
@@ -308,25 +317,21 @@ export class TripsService {
 		}
 
 		if (dto.dateFrom || dto.dateTo) {
-			where.createdAt = {};
+			const createdAtFilter: Prisma.DateTimeFilter = {};
 			if (dto.dateFrom) {
-				(where.createdAt as Record<string, unknown>).gte = new Date(
-					dto.dateFrom,
-				);
+				createdAtFilter.gte = new Date(dto.dateFrom);
 			}
 			if (dto.dateTo) {
-				(where.createdAt as Record<string, unknown>).lte = new Date(
-					dto.dateTo,
-				);
+				createdAtFilter.lte = new Date(dto.dateTo);
 			}
+			where.createdAt = createdAtFilter;
 		}
 
-		const orderBy: Record<string, string> = {};
+		const orderBy: Record<string, 'asc' | 'desc'> = {};
 		orderBy[dto.sortBy ?? 'createdAt'] = dto.sortOrder ?? 'desc';
 
-		/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 		const [trips, total] = await Promise.all([
-			(this.prisma.client.trip as any).findMany({
+			this.prisma.client.trip.findMany({
 				where,
 				skip,
 				take: limit,
@@ -354,12 +359,11 @@ export class TripsService {
 						},
 					},
 				},
-			}) as Promise<any[]>,
-			(this.prisma.client.trip as any).count({
+			}),
+			this.prisma.client.trip.count({
 				where,
-			}) as Promise<number>,
+			}),
 		]);
-		/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 		return {
 			trips,
@@ -371,8 +375,7 @@ export class TripsService {
 	}
 
 	async findById(id: string, userId: string, userRole: UserRole) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 			select: {
 				...defaultTripSelect,
@@ -466,18 +469,18 @@ export class TripsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		if (userRole === UserRole.CLIENT && trip.clientId !== userId) {
+		if (userRole === UserRole.CLIENT && trip.client.id !== userId) {
 			throw new ForbiddenException(
 				'Não tem permissão para ver esta viagem',
 			);
 		}
 
-		if (userRole === UserRole.DRIVER && trip.driverId) {
+		if (userRole === UserRole.DRIVER && trip.driver?.id) {
 			const driver = await this.prisma.client.driver.findUnique({
 				where: { userId },
 				select: { id: true },
 			});
-			if (!driver || trip.driverId !== driver.id) {
+			if (!driver || trip.driver.id !== driver.id) {
 				throw new ForbiddenException(
 					'Não tem permissão para ver esta viagem',
 				);
@@ -485,12 +488,10 @@ export class TripsService {
 		}
 
 		return trip;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async update(id: string, dto: UpdateTripDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -498,7 +499,7 @@ export class TripsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const data: Record<string, unknown> = {};
+		const data: Prisma.TripUpdateInput = {};
 
 		if (dto.pickupCoords) {
 			data.pickupCoords = coordsToWkt(
@@ -544,7 +545,7 @@ export class TripsService {
 			throw new BadRequestException('Nenhum dado para atualizar');
 		}
 
-		const updated = await (this.prisma.client.trip as any).update({
+		const updated = await this.prisma.client.trip.update({
 			where: { id },
 			data,
 			select: defaultTripSelect,
@@ -553,12 +554,10 @@ export class TripsService {
 		this.logger.log(`Trip ${id} updated`, 'TripsService');
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async remove(id: string) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -566,7 +565,7 @@ export class TripsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		await (this.prisma.client.trip as any).update({
+		await this.prisma.client.trip.update({
 			where: { id },
 			data: { deletedAt: new Date() },
 		});
@@ -576,7 +575,6 @@ export class TripsService {
 		return {
 			msg: 'Viagem removida com sucesso',
 		};
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 	}
 
 	async updateStatus(
@@ -585,8 +583,7 @@ export class TripsService {
 		actorUserId: string,
 		userRole: UserRole,
 	) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -594,7 +591,7 @@ export class TripsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const currentStatus = trip.status as TripStatus;
+		const currentStatus = trip.status;
 		const nextStatus = dto.status;
 
 		if (!this.isValidTransition(currentStatus, nextStatus)) {
@@ -611,13 +608,14 @@ export class TripsService {
 			throw new BadRequestException('Motivo de cancelamento obrigatório');
 		}
 
-		const updateData: Record<string, unknown> = {
+		const updateData: Prisma.TripUpdateInput = {
 			status: nextStatus,
 		};
 
 		const timestampField = statusTimestampField[nextStatus];
 		if (timestampField) {
-			updateData[timestampField] = new Date();
+			(updateData as Record<string, unknown>)[timestampField] =
+				new Date();
 		}
 
 		if (nextStatus === TripStatus.CANCELLED) {
@@ -625,7 +623,7 @@ export class TripsService {
 			updateData.cancelledByUserId = actorUserId;
 		}
 
-		const updated = await (this.prisma.client.trip as any).update({
+		const updated = await this.prisma.client.trip.update({
 			where: { id },
 			data: updateData,
 			select: {
@@ -679,19 +677,22 @@ export class TripsService {
 				},
 			});
 			if (driver) {
-				this.tripGateway.emitDriverAssigned(id, {
-					id: driver.id,
-					name: driver.user.name,
-					phoneNumber: driver.user.phoneNumber,
-				},
-				driver.vehicles[0]
-					? {
-							plateNumber: driver.vehicles[0].plateNumber,
-							brand: driver.vehicles[0].brand,
-							model: driver.vehicles[0].model,
-							color: driver.vehicles[0].color,
-						}
-					: undefined);
+				this.tripGateway.emitDriverAssigned(
+					id,
+					{
+						id: driver.id,
+						name: driver.user.name,
+						phoneNumber: driver.user.phoneNumber,
+					},
+					driver.vehicles[0]
+						? {
+								plateNumber: driver.vehicles[0].plateNumber,
+								brand: driver.vehicles[0].brand,
+								model: driver.vehicles[0].model,
+								color: driver.vehicles[0].color,
+							}
+						: undefined,
+				);
 			}
 		}
 
@@ -701,7 +702,6 @@ export class TripsService {
 		);
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async updateDeliveryStatus(
@@ -709,8 +709,7 @@ export class TripsService {
 		dto: UpdateDeliveryStatusDto,
 		actorUserId: string,
 	) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -722,8 +721,7 @@ export class TripsService {
 			throw new BadRequestException('Esta viagem não é do tipo entrega');
 		}
 
-		const currentDeliveryStatus =
-			trip.deliveryStatus as DeliveryStatus | null;
+		const currentDeliveryStatus = trip.deliveryStatus;
 		const nextDeliveryStatus = dto.deliveryStatus;
 
 		if (!currentDeliveryStatus) {
@@ -739,7 +737,7 @@ export class TripsService {
 			);
 		}
 
-		const updated = await (this.prisma.client.trip as any).update({
+		const updated = await this.prisma.client.trip.update({
 			where: { id },
 			data: { deliveryStatus: nextDeliveryStatus },
 			select: defaultTripSelect,
@@ -765,7 +763,6 @@ export class TripsService {
 		);
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async cancel(
@@ -774,8 +771,7 @@ export class TripsService {
 		userId: string,
 		userRole: UserRole,
 	) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -801,18 +797,13 @@ export class TripsService {
 			}
 		}
 
-		if (
-			!this.isValidTransition(
-				trip.status as TripStatus,
-				TripStatus.CANCELLED,
-			)
-		) {
+		if (!this.isValidTransition(trip.status, TripStatus.CANCELLED)) {
 			throw new BadRequestException(
 				`Viagem em estado ${trip.status} não pode ser cancelada`,
 			);
 		}
 
-		const updated = await (this.prisma.client.trip as any).update({
+		const updated = await this.prisma.client.trip.update({
 			where: { id },
 			data: {
 				status: TripStatus.CANCELLED,
@@ -845,12 +836,10 @@ export class TripsService {
 		);
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async updatePayment(id: string, dto: UpdatePaymentStatusDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 		});
 
@@ -858,7 +847,7 @@ export class TripsService {
 			throw new NotFoundException('Viagem não encontrada');
 		}
 
-		const updated = await (this.prisma.client.trip as any).update({
+		const updated = await this.prisma.client.trip.update({
 			where: { id },
 			data: {
 				paymentStatus: dto.paymentStatus,
@@ -870,7 +859,7 @@ export class TripsService {
 		});
 
 		if (dto.externalReference) {
-			await (this.prisma.client.financialTransaction as any).create({
+			await this.prisma.client.financialTransaction.create({
 				data: {
 					id: uuidv7(),
 					tripId: id,
@@ -895,7 +884,6 @@ export class TripsService {
 		);
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async estimate(dto: EstimateTripDto) {
@@ -958,8 +946,7 @@ export class TripsService {
 	}
 
 	async getEvents(id: string, userId: string, userRole: UserRole) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-		const trip = await (this.prisma.client.trip as any).findUnique({
+		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
 			select: { id: true, clientId: true, driverId: true },
 		});
@@ -986,13 +973,12 @@ export class TripsService {
 			}
 		}
 
-		const events = await (this.prisma.client.tripEvent as any).findMany({
+		const events = await this.prisma.client.tripEvent.findMany({
 			where: { tripId: id },
 			orderBy: { createdAt: 'asc' },
 		});
 
 		return events;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	private isValidTransition(current: TripStatus, next: TripStatus): boolean {
@@ -1004,8 +990,7 @@ export class TripsService {
 		type: TripEventType,
 		actorUserId?: string,
 	) {
-		/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-		await (this.prisma.client.tripEvent as any).create({
+		await this.prisma.client.tripEvent.create({
 			data: {
 				id: uuidv7(),
 				tripId,
@@ -1013,7 +998,6 @@ export class TripsService {
 				actorUserId: actorUserId ?? null,
 			},
 		});
-		/* eslint-enable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 	}
 
 	private async estimatePrice(params: {
@@ -1109,25 +1093,30 @@ export class TripsService {
 	}
 
 	private async findZoneForCoords(lat: number, lng: number) {
-		const result = await (
-			this.prisma.$queryRawUnsafe as unknown as (
-				query: string,
-				...params: unknown[]
-			) => Promise<ZoneResult[]>
-		)(
-			`SELECT z.id, z."surgeMultiplier"
-			 FROM "Zone" z
-			 WHERE ST_DWithin(
-				 z.boundary,
-				 ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-				 0
-			 ) AND z."isActive" = true
-			 LIMIT 1`,
-			lng,
-			lat,
-		);
+		try {
+			const result = await (
+				this.prisma.$queryRawUnsafe as unknown as (
+					query: string,
+					...params: unknown[]
+				) => Promise<ZoneResult[]>
+			)(
+				`SELECT z.id, z."surgeMultiplier"
+				 FROM "Zone" z
+				 WHERE z.boundary IS NOT NULL AND z.boundary != ''
+				 AND ST_DWithin(
+					 ST_GeomFromText(z.boundary, 4326)::geography,
+					 ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+					 0
+				 ) AND z."isActive" = true
+				 LIMIT 1`,
+				lng,
+				lat,
+			);
 
-		return result.length > 0 ? result[0] : null;
+			return result.length > 0 ? result[0] : null;
+		} catch {
+			return null;
+		}
 	}
 }
 

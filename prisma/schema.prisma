@@ -1,11 +1,10 @@
 generator client {
 	provider        = "prisma-client-js"
-	previewFeatures = ["postgresqlExtensions", "driverAdapters"]
+	previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-	provider   = "postgresql"
-	extensions = [postgis]
+	provider = "postgresql"
 }
 
 model User {
@@ -111,13 +110,13 @@ model UserAddress {
 	customLabel String?
 	address     String
 	reference   String?
-	location    Unsupported("geography")
+	location    String
 	createdAt   DateTime                 @default(now())
 	updatedAt   DateTime                 @updatedAt
 	user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
 	@@index([userId])
-	@@index([location], type: Gist)
+	@@index([location])
 }
 
 model Coupon {
@@ -182,14 +181,14 @@ model Driver {
 
 model DriverLocation {
 	driverId  String                   @id @db.Uuid
-	location  Unsupported("geography")
+	location  String
 	heading   Float?
 	speed     Float?
 	accuracy  Float?
 	updatedAt DateTime                 @updatedAt
 	driver    Driver                   @relation(fields: [driverId], references: [id], onDelete: Cascade)
 
-	@@index([location], type: Gist)
+	@@index([location])
 }
 
 model DriverDocument {
@@ -260,12 +259,12 @@ model PriceConfig {
 model Zone {
 	id              String                   @id @db.Uuid
 	name            String
-	boundary        Unsupported("geography")
+	boundary        String
 	surgeMultiplier Float                    @default(1.0)
 	isActive        Boolean                  @default(true)
 	createdAt       DateTime                 @default(now())
 
-	@@index([boundary], type: Gist)
+	@@index([boundary])
 }
 
 model Trip {
@@ -277,9 +276,9 @@ model Trip {
 	serviceType            ServiceType               @default(RIDE)
 	deliveryStatus         DeliveryStatus?
 	priceConfigId          String?                   @db.Uuid
-	requestLocation        Unsupported("geography")?
-	pickupCoords           Unsupported("geography")
-	dropoffCoords          Unsupported("geography")
+	requestLocation        String?
+	pickupCoords           String
+	dropoffCoords          String
 	pickupAddress          String
 	pickupReference        String?
 	dropoffAddress         String
@@ -378,14 +377,14 @@ model TripEvent {
 model TripLocationPoint {
 	id         String                   @id @db.Uuid
 	tripId     String                   @db.Uuid
-	location   Unsupported("geography")
+	location   String
 	speed      Float?
 	heading    Float?
 	recordedAt DateTime                 @default(now())
 	trip       Trip                     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
 	@@index([tripId])
-	@@index([location], type: Gist)
+	@@index([location])
 }
 
 model FinancialTransaction {

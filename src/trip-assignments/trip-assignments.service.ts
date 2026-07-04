@@ -31,7 +31,6 @@ export class TripAssignmentsService {
 	) {}
 
 	async create(dto: CreateTripAssignmentDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: dto.tripId },
 			select: {
@@ -89,7 +88,6 @@ export class TripAssignmentsService {
 		);
 
 		return assignment;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async list(dto: ListTripAssignmentsDto) {
@@ -195,7 +193,6 @@ export class TripAssignmentsService {
 	}
 
 	async update(id: string, dto: UpdateTripAssignmentDto) {
-		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const assignment = await this.prisma.client.tripAssignment.findUnique({
 			where: { id },
 		});
@@ -249,26 +246,18 @@ export class TripAssignmentsService {
 		});
 
 		if (dto.status === TripAssignmentStatus.REJECTED && trip && driver) {
-			this.tripGateway.sendToUser(
-				trip.clientId,
-				'trip:offer_rejected',
-				{
-					assignmentId: id,
-					tripId: trip.id,
-					driverId: driver.id,
-				},
-			);
+			this.tripGateway.sendToUser(trip.clientId, 'trip:offer_rejected', {
+				assignmentId: id,
+				tripId: trip.id,
+				driverId: driver.id,
+			});
 		}
 
 		if (dto.status === TripAssignmentStatus.EXPIRED && trip) {
-			this.tripGateway.sendToUser(
-				trip.clientId,
-				'trip:offer_expired',
-				{
-					assignmentId: id,
-					tripId: trip.id,
-				},
-			);
+			this.tripGateway.sendToUser(trip.clientId, 'trip:offer_expired', {
+				assignmentId: id,
+				tripId: trip.id,
+			});
 		}
 
 		this.logger.log(
@@ -277,7 +266,6 @@ export class TripAssignmentsService {
 		);
 
 		return updated;
-		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async remove(id: string) {

@@ -89,7 +89,7 @@ export class FinancialTransactionsService {
 					description: dto.description ?? null,
 					externalReference: dto.externalReference ?? null,
 					idempotencyKey: dto.idempotencyKey ?? null,
-					metadata: dto.metadata ?? undefined,
+					metadata: (dto.metadata ?? undefined) as any,
 				},
 				select: defaultTransactionSelect,
 			});

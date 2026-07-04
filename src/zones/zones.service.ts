@@ -4,6 +4,7 @@ import {
 	BadRequestException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
@@ -26,28 +27,35 @@ export class ZonesService {
 		private logger: LoggerService,
 	) {}
 
-	/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-
 	private async findByIdInternal(id: string) {
-		return (this.prisma.client.zone as any).findUnique({
+		return this.prisma.client.zone.findUnique({
 			where: { id },
 			select: defaultZoneSelect,
-		}) as Promise<{
-			id: string;
-			name: string;
-			surgeMultiplier: number;
-			isActive: boolean;
-			createdAt: Date;
-		} | null>;
+		});
+	}
+
+	private async validateBoundary(wkt: string) {
+		try {
+			await this.prisma.client.$queryRawUnsafe<{ valid: boolean }[]>(
+				`SELECT ST_IsValid(ST_GeomFromText($1, 4326)) AS valid`,
+				wkt,
+			);
+		} catch {
+			throw new BadRequestException(
+				'Polígono inválido. Verifique as coordenadas e tente novamente.',
+			);
+		}
 	}
 
 	async create(dto: CreateZoneDto) {
 		const id = uuidv7();
 		const wkt = polygonToWkt(dto.boundary);
 
-		await this.prisma.$queryRawUnsafe(
+		await this.validateBoundary(wkt);
+
+		await this.prisma.client.$executeRawUnsafe(
 			`INSERT INTO "Zone" (id, name, boundary, "surgeMultiplier", "isActive", "createdAt")
-			 VALUES ($1, $2, ST_GeomFromText($3, 4326), $4, $5, NOW())`,
+			 VALUES ($1, $2, $3, $4, $5, NOW())`,
 			id,
 			dto.name,
 			wkt,
@@ -70,7 +78,7 @@ export class ZonesService {
 		const limit = dto.limit ?? 20;
 		const skip = (page - 1) * limit;
 
-		const where: Record<string, unknown> = {};
+		const where: Prisma.ZoneWhereInput = {};
 
 		if (dto.search) {
 			where.name = { contains: dto.search, mode: 'insensitive' };
@@ -80,11 +88,11 @@ export class ZonesService {
 			where.isActive = dto.isActive;
 		}
 
-		const orderBy: Record<string, string> = {};
+		const orderBy: Record<string, 'asc' | 'desc'> = {};
 		orderBy[dto.sortBy ?? 'createdAt'] = dto.sortOrder ?? 'desc';
 
 		const [zones, total] = await Promise.all([
-			(this.prisma.client.zone as any).findMany({
+			this.prisma.client.zone.findMany({
 				where,
 				skip,
 				take: limit,
@@ -92,10 +100,10 @@ export class ZonesService {
 				select: {
 					...defaultZoneSelect,
 				},
-			}) as Promise<any[]>,
-			(this.prisma.client.zone as any).count({
+			}),
+			this.prisma.client.zone.count({
 				where,
-			}) as Promise<number>,
+			}),
 		]);
 
 		return {
@@ -114,7 +122,9 @@ export class ZonesService {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		const [raw] = (await this.prisma.$queryRawUnsafe(
+		const [raw] = await this.prisma.client.$queryRawUnsafe<
+			{ boundary: [number, number][] }[]
+		>(
 			`SELECT COALESCE(
 				(
 					SELECT json_agg(
@@ -124,7 +134,7 @@ export class ZonesService {
 						)
 					)
 					FROM (
-						SELECT (ST_DumpPoints(z.boundary::geometry)::geometry_dump).geom AS geom
+						SELECT (ST_DumpPoints(ST_GeomFromText(z.boundary, 4326))::geometry_dump).geom AS geom
 						FROM "Zone" z2 WHERE z2.id = $1
 					) AS dp
 				),
@@ -132,7 +142,7 @@ export class ZonesService {
 			) AS boundary
 			FROM "Zone" z WHERE z.id = $1`,
 			id,
-		)) as any[];
+		);
 
 		return {
 			...zone,
@@ -156,8 +166,10 @@ export class ZonesService {
 			params.push(dto.name);
 		}
 		if (dto.boundary !== undefined) {
-			setClauses.push(`boundary = ST_GeomFromText($${idx++}, 4326)`);
-			params.push(polygonToWkt(dto.boundary));
+			const wkt = polygonToWkt(dto.boundary);
+			await this.validateBoundary(wkt);
+			setClauses.push(`boundary = $${idx++}`);
+			params.push(wkt);
 		}
 		if (dto.surgeMultiplier !== undefined) {
 			setClauses.push(`"surgeMultiplier" = $${idx++}`);
@@ -174,7 +186,7 @@ export class ZonesService {
 
 		params.push(id);
 		const sql = `UPDATE "Zone" SET ${setClauses.join(', ')} WHERE id = $${idx}`;
-		await this.prisma.$queryRawUnsafe(sql, ...params);
+		await this.prisma.client.$executeRawUnsafe(sql, ...params);
 
 		const updated = await this.findByIdInternal(id);
 
@@ -190,7 +202,7 @@ export class ZonesService {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		await this.prisma.$queryRawUnsafe(
+		await this.prisma.client.$executeRawUnsafe(
 			`UPDATE "Zone" SET "isActive" = false WHERE id = $1`,
 			id,
 		);
@@ -209,7 +221,7 @@ export class ZonesService {
 			throw new NotFoundException('Zona não encontrada');
 		}
 
-		await this.prisma.$queryRawUnsafe(
+		await this.prisma.client.$executeRawUnsafe(
 			`UPDATE "Zone" SET "isActive" = NOT "isActive" WHERE id = $1`,
 			id,
 		);
@@ -223,6 +235,4 @@ export class ZonesService {
 
 		return updated!;
 	}
-
-	/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 }

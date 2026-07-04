@@ -57,7 +57,7 @@ export class DeliveryDetailsService {
 				receiverPhone: dto.receiverPhone,
 				packageType: dto.packageType,
 				notes: dto.notes ?? null,
-				metadata: dto.metadata ?? undefined,
+				metadata: (dto.metadata ?? undefined) as any,
 			},
 			select: defaultDeliveryDetailsSelect,
 		});

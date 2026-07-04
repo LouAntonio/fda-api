@@ -37,7 +37,7 @@ export class TripEventsService {
 				tripId: dto.tripId,
 				type: dto.type,
 				actorUserId: dto.actorUserId ?? null,
-				metadata: dto.metadata ?? undefined,
+				metadata: (dto.metadata ?? undefined) as any,
 			},
 			select: defaultEventSelect,
 		});

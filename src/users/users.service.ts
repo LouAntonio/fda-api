@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import * as crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BcryptService } from '../auth/services/bcrypt.service';
 import { ResendService } from '../email/resend.service';
@@ -276,7 +277,7 @@ export class UsersService {
 					surname: user.surname,
 					email: user.email,
 				},
-				newValue: data,
+				newValue: data as unknown as Prisma.InputJsonValue,
 			},
 		});
 
@@ -685,8 +686,7 @@ export class UsersService {
 			throw new NotFoundException('Utilizador não encontrado');
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		const address = await (this.prisma.client.userAddress as any).create({
+		const address = await this.prisma.client.userAddress.create({
 			data: {
 				id: uuidv7(),
 				userId,
@@ -700,7 +700,6 @@ export class UsersService {
 
 		return {
 			msg: 'Endereço criado com sucesso',
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			data: address,
 		};
 	}
