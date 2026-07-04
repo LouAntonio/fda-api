@@ -25,6 +25,7 @@ import { DriverPayoutsModule } from './driver-payouts/driver-payouts.module';
 import { DisputesModule } from './disputes/disputes.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
+import { SupportModule } from './support/support.module';
 import { AppController } from './app.controller';
 import { HealthController } from './health/health.controller';
 import { AppService } from './app.service';
@@ -63,6 +64,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		DisputesModule,
 		ReviewsModule,
 		AuditLogsModule,
+		SupportModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [

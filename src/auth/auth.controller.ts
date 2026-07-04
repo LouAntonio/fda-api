@@ -4,6 +4,7 @@ import {
 	Get,
 	Post,
 	Patch,
+	Delete,
 	UseGuards,
 	Req,
 	ValidationPipe,
@@ -25,6 +26,7 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Auth')
@@ -210,6 +212,22 @@ export class AuthController {
 	logout(@Req() req: Request, @Body(ValidationPipe) dto: RefreshTokenDto) {
 		const user = req.user as { id: string };
 		return this.authService.logout(user.id, dto?.refreshToken);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Eliminar conta',
+		description:
+			'Elimina permanentemente a conta do utilizador autenticado (soft-delete)',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Delete('account')
+	deleteAccount(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: DeleteAccountDto,
+	) {
+		const user = req.user as { id: string };
+		return this.authService.deleteAccount(user.id, dto);
 	}
 
 	@ApiBearerAuth()

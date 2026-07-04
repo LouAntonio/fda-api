@@ -52,6 +52,16 @@ export class CouponsController {
 		return this.couponsService.list(dto);
 	}
 
+	@ApiOperation({
+		summary: 'Listar promoções activas',
+		description:
+			'Retorna todos os cupões/promoções activos e disponíveis para o público',
+	})
+	@Get('active')
+	findActive() {
+		return this.couponsService.findActive();
+	}
+
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Obter cupão',

@@ -38,6 +38,7 @@ model User {
 	sessions              Session[]
 	tripsAsClient         Trip[]                 @relation("ClientTrips")
 	addresses             UserAddress[]
+	supportTickets        SupportTicket[]
 	verifications         Verification[]
 
 	@@index([role])
@@ -479,6 +480,22 @@ model AuditLog {
 
 	@@index([adminId])
 	@@index([entity, entityId])
+}
+
+model SupportTicket {
+	id        String   @id @default(uuid()) @db.Uuid
+	userId    String?  @db.Uuid
+	name      String
+	email     String?
+	phone     String?
+	message   String
+	status    String   @default("OPEN")
+	createdAt DateTime @default(now())
+	updatedAt DateTime @updatedAt
+	user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+	@@index([status])
+	@@index([createdAt])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

@@ -343,6 +343,42 @@ export class CouponsService {
 		};
 	}
 
+	async findActive() {
+		const now = new Date();
+
+		const coupons = await this.prisma.client.coupon.findMany({
+			where: {
+				isActive: true,
+				deletedAt: null,
+				startsAt: { lte: now },
+				OR: [{ expiresAt: null }, { expiresAt: { gte: now } }],
+			},
+			orderBy: { createdAt: 'desc' },
+			select: {
+				id: true,
+				code: true,
+				description: true,
+				discountType: true,
+				discountValue: true,
+				maxDiscount: true,
+				minTripAmount: true,
+				startsAt: true,
+				expiresAt: true,
+				isActive: true,
+				createdAt: true,
+			},
+		});
+
+		return {
+			promotions: coupons.map((c) => ({
+				...c,
+				discountValue: Number(c.discountValue),
+				maxDiscount: c.maxDiscount ? Number(c.maxDiscount) : null,
+				minTripAmount: c.minTripAmount ? Number(c.minTripAmount) : null,
+			})),
+		};
+	}
+
 	async incrementUsage(id: string) {
 		await this.prisma.client.coupon.update({
 			where: { id },

@@ -63,6 +63,18 @@ export class UsersController {
 
 	@ApiBearerAuth()
 	@ApiOperation({
+		summary: 'Estatísticas do perfil',
+		description:
+			'Retorna estatísticas agregadas do utilizador autenticado (total viagens, distância, tempo, gasto)',
+	})
+	@Get('me/stats')
+	getStats(@Req() req: Request) {
+		const user = req.user as { id: string };
+		return this.usersService.getStats(user.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
 		summary: 'Obter utilizador',
 		description: 'Retorna os dados de um utilizador específico',
 	})

@@ -24,6 +24,7 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 
 @Injectable()
 export class AuthService {
@@ -587,6 +588,52 @@ export class AuthService {
 
 		return {
 			msg: 'Sessão encerrada com sucesso',
+		};
+	}
+
+	async deleteAccount(userId: string, dto: DeleteAccountDto) {
+		const user = await this.prisma.client.user.findUnique({
+			where: { id: userId },
+		});
+
+		if (!user) {
+			throw new BadRequestException('Utilizador não encontrado');
+		}
+
+		const credentialAccount = await this.prisma.client.account.findFirst({
+			where: { userId, providerId: 'credential' },
+			select: { password: true },
+		});
+
+		if (credentialAccount?.password) {
+			if (!dto.password) {
+				throw new BadRequestException(
+					'Confirma a tua palavra-passe para eliminar a conta.',
+				);
+			}
+
+			const valid = await this.bcrypt.compare(
+				dto.password,
+				credentialAccount.password,
+			);
+			if (!valid) {
+				throw new UnauthorizedException('Palavra-passe incorreta');
+			}
+		}
+
+		await this.prisma.client.session.deleteMany({
+			where: { userId },
+		});
+
+		await this.prisma.client.user.update({
+			where: { id: userId },
+			data: { deletedAt: new Date() },
+		});
+
+		this.logger.log(`Account deleted: ${userId}`, 'AuthService');
+
+		return {
+			msg: 'Conta eliminada com sucesso.',
 		};
 	}
 

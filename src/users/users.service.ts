@@ -814,6 +814,53 @@ export class UsersService {
 		return tokens;
 	}
 
+	async getStats(userId: string) {
+		const user = await this.prisma.client.user.findUnique({
+			where: { id: userId },
+			select: { id: true },
+		});
+
+		if (!user) {
+			throw new NotFoundException('Utilizador não encontrado');
+		}
+
+		const trips = await this.prisma.client.trip.findMany({
+			where: {
+				clientId: userId,
+				status: 'COMPLETED',
+				deletedAt: null,
+			},
+			select: {
+				actualDistanceKm: true,
+				actualDurationMin: true,
+				totalPrice: true,
+			},
+		});
+
+		const totalTrips = trips.length;
+		const totalDistanceKm = trips.reduce(
+			(sum, t) => sum + (t.actualDistanceKm ?? 0),
+			0,
+		);
+		const totalDurationMin = trips.reduce(
+			(sum, t) => sum + (t.actualDurationMin ?? 0),
+			0,
+		);
+		const totalSpent = trips.reduce(
+			(sum, t) => sum + Number(t.totalPrice),
+			0,
+		);
+
+		return {
+			stats: {
+				totalTrips,
+				totalDistanceKm: Math.round(totalDistanceKm * 100) / 100,
+				totalDurationMin,
+				totalSpent: Math.round(totalSpent * 100) / 100,
+			},
+		};
+	}
+
 	async createPushToken(userId: string, dto: CreatePushTokenDto) {
 		const user = await this.prisma.client.user.findUnique({
 			where: { id: userId },
