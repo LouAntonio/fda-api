@@ -30,6 +30,14 @@ export class ResponseInterceptor<T> implements NestInterceptor<
 					return body as unknown as ApiResponse<T>;
 				}
 
+				if (Array.isArray(body)) {
+					return {
+						success: true,
+						msg: '',
+						data: body as T,
+					};
+				}
+
 				if (body && typeof body === 'object' && 'data' in body) {
 					return {
 						success: true,

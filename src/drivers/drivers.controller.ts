@@ -35,6 +35,64 @@ export class DriversController {
 
 	@ApiBearerAuth()
 	@ApiOperation({
+		summary: 'Meu perfil',
+		description: 'Retorna o perfil do motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me')
+	async findMe(@Req() req: Request) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.findById(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Meus documentos',
+		description: 'Lista os documentos do motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me/documents')
+	async listMyDocuments(@Req() req: Request) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.listDocuments(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Upload meu documento',
+		description: 'Adiciona um documento ao motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Post('me/documents')
+	async uploadMyDocument(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: UploadDocumentDto,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.uploadDocument(driver.id, dto);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Remover meu documento',
+		description: 'Remove um documento do motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Delete('me/documents/:documentId')
+	async deleteMyDocument(
+		@Req() req: Request,
+		@Param('documentId') documentId: string,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.deleteDocument(driver.id, documentId);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
 		summary: 'Criar motorista',
 		description:
 			'Cria um perfil de motorista e atualiza role do user para DRIVER',
