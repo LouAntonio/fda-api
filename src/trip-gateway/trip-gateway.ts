@@ -16,6 +16,12 @@ interface JwtPayload {
 
 type AuthenticatedSocket = Socket & { user: JwtPayload };
 
+interface ActiveRoom {
+	room: string;
+	type: 'trip' | 'user';
+	identifier: string;
+}
+
 @WebSocketGateway({
 	namespace: '/trips',
 	cors: {
@@ -28,6 +34,7 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	server!: Server;
 
 	private userSockets = new Map<string, Set<string>>();
+	private clientRooms = new Map<string, Set<string>>();
 
 	handleConnection(client: AuthenticatedSocket) {
 		try {
@@ -57,7 +64,9 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			}
 			this.userSockets.get(userId)!.add(client.id);
 
-			void client.join(`user:${userId}`);
+			const userRoom = `user:${userId}`;
+			void client.join(userRoom);
+			this.trackRoom(client.id, userRoom);
 		} catch {
 			client.emit('error', { message: 'Token inválido ou expirado' });
 			client.disconnect();
@@ -75,16 +84,57 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				}
 			}
 		}
+		this.clientRooms.delete(client.id);
 	}
 
 	@SubscribeMessage('join:trip')
 	handleJoinTrip(client: Socket, tripId: string) {
-		void client.join(`trip:${tripId}`);
+		const room = `trip:${tripId}`;
+		void client.join(room);
+		this.trackRoom(client.id, room);
 	}
 
 	@SubscribeMessage('leave:trip')
 	handleLeaveTrip(client: Socket, tripId: string) {
-		void client.leave(`trip:${tripId}`);
+		const room = `trip:${tripId}`;
+		void client.leave(room);
+		this.untrackRoom(client.id, room);
+	}
+
+	@SubscribeMessage('ping')
+	handlePing(client: Socket) {
+		client.emit('pong', { timestamp: new Date().toISOString() });
+	}
+
+	@SubscribeMessage('rejoin:rooms')
+	handleRejoinRooms(client: AuthenticatedSocket) {
+		const rooms = this.clientRooms.get(client.id);
+		if (rooms) {
+			for (const room of rooms) {
+				void client.join(room);
+			}
+		}
+		client.emit('rejoin:rooms:ack', {
+			rooms: Array.from(rooms ?? []),
+			timestamp: new Date().toISOString(),
+		});
+	}
+
+	private trackRoom(clientId: string, room: string) {
+		if (!this.clientRooms.has(clientId)) {
+			this.clientRooms.set(clientId, new Set());
+		}
+		this.clientRooms.get(clientId)!.add(room);
+	}
+
+	private untrackRoom(clientId: string, room: string) {
+		const rooms = this.clientRooms.get(clientId);
+		if (rooms) {
+			rooms.delete(room);
+			if (rooms.size === 0) {
+				this.clientRooms.delete(clientId);
+			}
+		}
 	}
 
 	sendToTripRoom(tripId: string, event: string, data: unknown) {

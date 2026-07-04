@@ -43,11 +43,24 @@ export class TripGatewayService {
 		this.gateway.sendToTripRoom(tripId, event, data);
 	}
 
-	emitDriverLocation(tripId: string, lat: number, lng: number) {
+	sendToUser(userId: string, event: string, data: Record<string, unknown>) {
+		this.gateway.sendToUser(userId, event, data);
+	}
+
+	emitDriverLocation(
+		tripId: string,
+		lat: number,
+		lng: number,
+		speed?: number,
+		heading?: number,
+	) {
 		this.gateway.sendToTripRoom(tripId, 'trip:location', {
 			tripId,
 			lat,
 			lng,
+			speed: speed ?? null,
+			heading: heading ?? null,
+			recordedAt: new Date().toISOString(),
 		});
 	}
 

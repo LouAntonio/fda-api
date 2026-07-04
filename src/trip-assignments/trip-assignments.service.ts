@@ -3,9 +3,11 @@ import {
 	NotFoundException,
 	BadRequestException,
 } from '@nestjs/common';
+import { TripAssignmentStatus } from '@prisma/client';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
+import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { CreateTripAssignmentDto } from './dto/create-trip-assignment.dto';
 import { UpdateTripAssignmentDto } from './dto/update-trip-assignment.dto';
 import { ListTripAssignmentsDto } from './dto/list-trip-assignments.dto';
@@ -25,12 +27,22 @@ export class TripAssignmentsService {
 	constructor(
 		private prisma: PrismaService,
 		private logger: LoggerService,
+		private tripGateway: TripGatewayService,
 	) {}
 
 	async create(dto: CreateTripAssignmentDto) {
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: dto.tripId },
-			select: { id: true },
+			select: {
+				id: true,
+				pickupAddress: true,
+				dropoffAddress: true,
+				estimatedDistanceKm: true,
+				estimatedDurationMin: true,
+				totalPrice: true,
+				clientId: true,
+			},
 		});
 
 		if (!trip) {
@@ -39,7 +51,11 @@ export class TripAssignmentsService {
 
 		const driver = await this.prisma.client.driver.findUnique({
 			where: { id: dto.driverId },
-			select: { id: true },
+			select: {
+				id: true,
+				userId: true,
+				user: { select: { name: true } },
+			},
 		});
 
 		if (!driver) {
@@ -55,12 +71,25 @@ export class TripAssignmentsService {
 			select: defaultAssignmentSelect,
 		});
 
+		this.tripGateway.sendToUser(driver.userId, 'trip:offer', {
+			assignmentId: assignment.id,
+			tripId: trip.id,
+			pickupAddress: trip.pickupAddress,
+			dropoffAddress: trip.dropoffAddress,
+			estimatedDistanceKm: trip.estimatedDistanceKm,
+			estimatedDurationMin: trip.estimatedDurationMin,
+			totalPrice: trip.totalPrice,
+			driverId: driver.id,
+			driverName: driver.user.name,
+		});
+
 		this.logger.log(
 			`TripAssignment ${assignment.id} created for trip ${dto.tripId} driver ${dto.driverId}`,
 			'TripAssignmentsService',
 		);
 
 		return assignment;
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async list(dto: ListTripAssignmentsDto) {
@@ -166,6 +195,7 @@ export class TripAssignmentsService {
 	}
 
 	async update(id: string, dto: UpdateTripAssignmentDto) {
+		/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 		const assignment = await this.prisma.client.tripAssignment.findUnique({
 			where: { id },
 		});
@@ -186,12 +216,68 @@ export class TripAssignmentsService {
 			select: defaultAssignmentSelect,
 		});
 
+		const trip = await this.prisma.client.trip.findUnique({
+			where: { id: assignment.tripId },
+			select: { id: true, clientId: true, driverId: true },
+		});
+
+		const driver = await this.prisma.client.driver.findUnique({
+			where: { id: assignment.driverId },
+			select: {
+				id: true,
+				userId: true,
+				user: {
+					select: {
+						id: true,
+						name: true,
+						surname: true,
+						phoneNumber: true,
+					},
+				},
+				vehicles: {
+					where: { status: 'ACTIVE' },
+					select: {
+						id: true,
+						plateNumber: true,
+						brand: true,
+						model: true,
+						color: true,
+					},
+					take: 1,
+				},
+			},
+		});
+
+		if (dto.status === TripAssignmentStatus.REJECTED && trip && driver) {
+			this.tripGateway.sendToUser(
+				trip.clientId,
+				'trip:offer_rejected',
+				{
+					assignmentId: id,
+					tripId: trip.id,
+					driverId: driver.id,
+				},
+			);
+		}
+
+		if (dto.status === TripAssignmentStatus.EXPIRED && trip) {
+			this.tripGateway.sendToUser(
+				trip.clientId,
+				'trip:offer_expired',
+				{
+					assignmentId: id,
+					tripId: trip.id,
+				},
+			);
+		}
+
 		this.logger.log(
 			`TripAssignment ${id} status: ${assignment.status} -> ${dto.status}`,
 			'TripAssignmentsService',
 		);
 
 		return updated;
+		/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 	}
 
 	async remove(id: string) {

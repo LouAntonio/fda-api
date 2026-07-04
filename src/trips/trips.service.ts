@@ -665,6 +665,17 @@ export class TripsService {
 				select: {
 					id: true,
 					user: { select: { name: true, phoneNumber: true } },
+					vehicles: {
+						where: { status: 'ACTIVE' },
+						select: {
+							id: true,
+							plateNumber: true,
+							brand: true,
+							model: true,
+							color: true,
+						},
+						take: 1,
+					},
 				},
 			});
 			if (driver) {
@@ -672,7 +683,15 @@ export class TripsService {
 					id: driver.id,
 					name: driver.user.name,
 					phoneNumber: driver.user.phoneNumber,
-				});
+				},
+				driver.vehicles[0]
+					? {
+							plateNumber: driver.vehicles[0].plateNumber,
+							brand: driver.vehicles[0].brand,
+							model: driver.vehicles[0].model,
+							color: driver.vehicles[0].color,
+						}
+					: undefined);
 			}
 		}
 

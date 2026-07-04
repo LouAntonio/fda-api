@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
+import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { CreateTripLocationPointDto } from './dto/create-trip-location-point.dto';
 import { ListTripLocationPointsDto } from './dto/list-trip-location-points.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
@@ -19,6 +20,7 @@ export class TripLocationPointsService {
 	constructor(
 		private prisma: PrismaService,
 		private logger: LoggerService,
+		private tripGateway: TripGatewayService,
 	) {}
 
 	async create(dto: CreateTripLocationPointDto) {
@@ -47,6 +49,14 @@ export class TripLocationPointsService {
 			},
 			select: defaultLocationPointSelect,
 		});
+
+		this.tripGateway.emitDriverLocation(
+			dto.tripId,
+			dto.lat,
+			dto.lng,
+			dto.speed,
+			dto.heading,
+		);
 
 		this.logger.log(
 			`TripLocationPoint ${point.id} recorded for trip ${dto.tripId}`,
