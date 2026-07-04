@@ -1117,9 +1117,10 @@ export class TripsService {
 		)(
 			`SELECT z.id, z."surgeMultiplier"
 			 FROM "Zone" z
-			 WHERE ST_Within(
+			 WHERE ST_DWithin(
+				 z.boundary,
 				 ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-				 z.boundary
+				 0
 			 ) AND z."isActive" = true
 			 LIMIT 1`,
 			lng,
