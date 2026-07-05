@@ -41,8 +41,14 @@ export class AuditLogsService {
 				action: dto.action,
 				entity: dto.entity,
 				entityId: dto.entityId,
-				oldValue: dto.oldValue ?? Prisma.JsonNull,
-				newValue: dto.newValue ?? Prisma.JsonNull,
+				oldValue:
+					(dto.oldValue as unknown as
+						| Prisma.NullableJsonNullValueInput
+						| Prisma.InputJsonValue) ?? Prisma.JsonNull,
+				newValue:
+					(dto.newValue as unknown as
+						| Prisma.NullableJsonNullValueInput
+						| Prisma.InputJsonValue) ?? Prisma.JsonNull,
 			},
 			select: defaultAuditLogSelect,
 		});

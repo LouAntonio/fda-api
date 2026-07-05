@@ -58,7 +58,10 @@ export class DeliveryDetailsService {
 				receiverPhone: dto.receiverPhone,
 				packageType: dto.packageType,
 				notes: dto.notes ?? null,
-				metadata: dto.metadata ?? Prisma.JsonNull,
+				metadata:
+					(dto.metadata as unknown as
+						| Prisma.NullableJsonNullValueInput
+						| Prisma.InputJsonValue) ?? Prisma.JsonNull,
 			},
 			select: defaultDeliveryDetailsSelect,
 		});

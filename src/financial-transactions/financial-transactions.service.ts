@@ -108,7 +108,10 @@ export class FinancialTransactionsService {
 					description: dto.description ?? null,
 					externalReference: dto.externalReference ?? null,
 					idempotencyKey: dto.idempotencyKey ?? null,
-					metadata: dto.metadata ?? Prisma.JsonNull,
+					metadata:
+						(dto.metadata as unknown as
+							| Prisma.NullableJsonNullValueInput
+							| Prisma.InputJsonValue) ?? Prisma.JsonNull,
 				},
 				select: defaultTransactionSelect,
 			});

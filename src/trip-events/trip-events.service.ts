@@ -38,7 +38,10 @@ export class TripEventsService {
 				tripId: dto.tripId,
 				type: dto.type,
 				actorUserId: dto.actorUserId ?? null,
-				metadata: dto.metadata ?? Prisma.JsonNull,
+				metadata:
+					(dto.metadata as unknown as
+						| Prisma.NullableJsonNullValueInput
+						| Prisma.InputJsonValue) ?? Prisma.JsonNull,
 			},
 			select: defaultEventSelect,
 		});
