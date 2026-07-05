@@ -66,7 +66,15 @@ export class TripAssignmentsService {
 			throw new NotFoundException('Motorista não encontrado');
 		}
 
-		let assignment;
+		let assignment: {
+			id: string;
+			tripId: string;
+			driverId: string;
+			status: TripAssignmentStatus;
+			createdAt: Date;
+			updatedAt: Date;
+			deletedAt: Date | null;
+		};
 		try {
 			assignment = await this.prisma.client.tripAssignment.create({
 				data: {

@@ -76,7 +76,23 @@ export class FinancialTransactionsService {
 			}
 		}
 
-		let transaction;
+		let transaction: {
+			id: string;
+			idempotencyKey: string | null;
+			tripId: string | null;
+			userId: string | null;
+			driverId: string | null;
+			type: string;
+			status: string;
+			amount: Prisma.Decimal;
+			taxAmount: Prisma.Decimal | null;
+			currency: string;
+			description: string | null;
+			externalReference: string | null;
+			metadata: Prisma.JsonValue | null;
+			createdAt: Date;
+			deletedAt: Date | null;
+		};
 		try {
 			transaction = await this.prisma.client.financialTransaction.create({
 				data: {
@@ -92,7 +108,7 @@ export class FinancialTransactionsService {
 					description: dto.description ?? null,
 					externalReference: dto.externalReference ?? null,
 					idempotencyKey: dto.idempotencyKey ?? null,
-					metadata: (dto.metadata ?? undefined) as any,
+					metadata: dto.metadata ?? Prisma.JsonNull,
 				},
 				select: defaultTransactionSelect,
 			});

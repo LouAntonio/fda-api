@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
@@ -40,8 +41,8 @@ export class AuditLogsService {
 				action: dto.action,
 				entity: dto.entity,
 				entityId: dto.entityId,
-				oldValue: (dto.oldValue ?? undefined) as any,
-				newValue: (dto.newValue ?? undefined) as any,
+				oldValue: dto.oldValue ?? Prisma.JsonNull,
+				newValue: dto.newValue ?? Prisma.JsonNull,
 			},
 			select: defaultAuditLogSelect,
 		});

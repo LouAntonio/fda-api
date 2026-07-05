@@ -5,6 +5,7 @@ import {
 	ConflictException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CreateDeliveryDetailsDto } from './dto/create-delivery-details.dto';
@@ -57,7 +58,7 @@ export class DeliveryDetailsService {
 				receiverPhone: dto.receiverPhone,
 				packageType: dto.packageType,
 				notes: dto.notes ?? null,
-				metadata: (dto.metadata ?? undefined) as any,
+				metadata: dto.metadata ?? Prisma.JsonNull,
 			},
 			select: defaultDeliveryDetailsSelect,
 		});

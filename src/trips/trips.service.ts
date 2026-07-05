@@ -275,10 +275,10 @@ export class TripsService {
 					pickupLng,
 					vehicleType: dto.vehicleType,
 				})
-				.catch((err) =>
+				.catch((err: unknown) =>
 					this.logger.error(
 						`Failed to enqueue dispatch for trip ${trip.id}`,
-						err,
+						err instanceof Error ? err.message : String(err),
 					),
 				);
 		}
@@ -684,11 +684,12 @@ export class TripsService {
 
 		this.tripGateway.emitTripStatus(id, nextStatus);
 
-		void this.sendStatusPushNotifications(trip, nextStatus).catch((err) =>
-			this.logger.error(
-				`Failed to send push for trip ${id} status ${nextStatus}`,
-				err,
-			),
+		void this.sendStatusPushNotifications(trip, nextStatus).catch(
+			(err: unknown) =>
+				this.logger.error(
+					`Failed to send push for trip ${id} status ${nextStatus}`,
+					err instanceof Error ? err.message : String(err),
+				),
 		);
 
 		if (nextStatus === TripStatus.ACCEPTED && trip.driverId) {

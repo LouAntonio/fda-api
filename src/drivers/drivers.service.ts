@@ -16,7 +16,6 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
-import { RequestPayoutDto } from './dto/request-payout.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
 
 const defaultDriverSelect = {
@@ -418,34 +417,34 @@ export class DriversService {
 			LIMIT ${limit}
 		`;
 
-		const result = await this.prisma.$queryRawUnsafe(query, ...queryParams);
-		const drivers = result as {
-			id: string;
-			userId: string;
-			ratingAverage: number;
-			ratingCount: number;
-			completedTripsCount: number;
-			availableBalance: string;
-			lat: number;
-			lng: number;
-			distance_km: number;
-			user: {
+		const drivers = await this.prisma.client.$queryRawUnsafe<
+			{
 				id: string;
-				name: string;
-				surname: string | null;
-				phoneNumber: string | null;
-				image: string | null;
-			};
-			vehicle: {
-				id: string;
-				plateNumber: string;
-				brand: string;
-				model: string;
-				color: string;
-				type: string;
-			};
-		}[];
-
+				userId: string;
+				ratingAverage: number;
+				ratingCount: number;
+				completedTripsCount: number;
+				availableBalance: string;
+				lat: number;
+				lng: number;
+				distance_km: number;
+				user: {
+					id: string;
+					name: string;
+					surname: string | null;
+					phoneNumber: string | null;
+					image: string | null;
+				};
+				vehicle: {
+					id: string;
+					plateNumber: string;
+					brand: string;
+					model: string;
+					color: string;
+					type: string;
+				};
+			}[]
+		>(query, ...queryParams);
 		return drivers;
 	}
 

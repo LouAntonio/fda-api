@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AdminService {
 	constructor(private prisma: PrismaService) {}
 
-	async getDashboard(dateFrom?: string, dateTo?: string) {
+	async getDashboard() {
 		const now = new Date();
 		const startOfToday = new Date(
 			now.getFullYear(),

@@ -79,7 +79,24 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
-		const rawResult = await this.prisma.$queryRawUnsafe(
+		const nearestDrivers = await this.prisma.client.$queryRawUnsafe<
+			{
+				id: string;
+				userId: string;
+				name: string;
+				lat: number;
+				lng: number;
+				distance_km: number;
+				vehicle: {
+					id: string;
+					plateNumber: string;
+					brand: string;
+					model: string;
+					color: string;
+					type: string;
+				};
+			}[]
+		>(
 			`
 			SELECT
 				d.id,
@@ -125,23 +142,6 @@ export class DispatchProcessor extends WorkerHost {
 				? [pickupLat, pickupLng, ...excludedDriverIds]
 				: [pickupLat, pickupLng]),
 		);
-
-		const nearestDrivers = rawResult as {
-			id: string;
-			userId: string;
-			name: string;
-			lat: number;
-			lng: number;
-			distance_km: number;
-			vehicle: {
-				id: string;
-				plateNumber: string;
-				brand: string;
-				model: string;
-				color: string;
-				type: string;
-			};
-		}[];
 
 		if (nearestDrivers.length === 0) {
 			if (currentAttempt < MAX_DISPATCH_ATTEMPTS) {

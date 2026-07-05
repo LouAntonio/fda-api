@@ -1,6 +1,5 @@
 import { IsOptional, IsNumber, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
-import { VehicleType } from '@prisma/client';
 
 export class NearestDriversDto {
 	@Type(() => Number)

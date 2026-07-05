@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CreateTripEventDto } from './dto/create-trip-event.dto';
@@ -37,7 +38,7 @@ export class TripEventsService {
 				tripId: dto.tripId,
 				type: dto.type,
 				actorUserId: dto.actorUserId ?? null,
-				metadata: (dto.metadata ?? undefined) as any,
+				metadata: dto.metadata ?? Prisma.JsonNull,
 			},
 			select: defaultEventSelect,
 		});
