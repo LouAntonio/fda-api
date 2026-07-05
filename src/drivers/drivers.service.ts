@@ -759,6 +759,53 @@ export class DriversService {
 		return payout;
 	}
 
+	async getEarningsSummary(driverId: string) {
+		const driver = await this.prisma.client.driver.findUnique({
+			where: { id: driverId },
+			select: { availableBalance: true, pendingBalance: true },
+		});
+
+		if (!driver || driver.deletedAt) {
+			throw new NotFoundException('Motorista não encontrado');
+		}
+
+		return {
+			availableBalance: driver.availableBalance,
+			pendingBalance: driver.pendingBalance,
+		};
+	}
+
+	async setActiveVehicle(driverId: string, vehicleId: string) {
+		const driver = await this.prisma.client.driver.findUnique({
+			where: { id: driverId },
+		});
+
+		if (!driver || driver.deletedAt) {
+			throw new NotFoundException('Motorista não encontrado');
+		}
+
+		const vehicle = await this.prisma.client.vehicle.findUnique({
+			where: { id: vehicleId },
+		});
+
+		if (!vehicle || vehicle.deletedAt || vehicle.driverId !== driverId) {
+			throw new NotFoundException('Veículo não encontrado');
+		}
+
+		const updated = await this.prisma.client.driver.update({
+			where: { id: driverId },
+			data: { activeVehicleId: vehicleId },
+			select: defaultDriverSelect,
+		});
+
+		this.logger.log(
+			`Driver ${driverId} set active vehicle to ${vehicleId}`,
+			'DriversService',
+		);
+
+		return updated;
+	}
+
 	async listMyPayouts(
 		driverId: string,
 		page = 1,

@@ -241,6 +241,65 @@ export class VehiclesService {
 		return updated;
 	}
 
+	async createForDriver(driverId: string, dto: CreateVehicleDto) {
+		const existing = await this.prisma.client.vehicle.findUnique({
+			where: { plateNumber: dto.plateNumber },
+		});
+
+		if (existing) {
+			throw new ConflictException('Esta matrícula já está registada');
+		}
+
+		const vehicle = await this.prisma.client.vehicle.create({
+			data: {
+				id: uuidv7(),
+				driverId,
+				plateNumber: dto.plateNumber,
+				brand: dto.brand,
+				model: dto.model,
+				year: dto.year,
+				color: dto.color,
+				type: dto.type,
+				photoUrl: dto.photoUrl,
+			},
+			select: defaultVehicleSelect,
+		});
+
+		await this.prisma.client.driver.update({
+			where: { id: driverId },
+			data: { activeVehicleId: vehicle.id },
+		});
+
+		this.logger.log(
+			`Vehicle ${vehicle.plateNumber} created and set as active for driver ${driverId}`,
+			'VehiclesService',
+		);
+
+		return vehicle;
+	}
+
+	async validateOwnership(vehicleId: string, driverId: string) {
+		const vehicle = await this.prisma.client.vehicle.findUnique({
+			where: { id: vehicleId },
+		});
+
+		if (!vehicle || vehicle.deletedAt || vehicle.driverId !== driverId) {
+			throw new NotFoundException('Veículo não encontrado');
+		}
+
+		return vehicle;
+	}
+
+	async findByDriverId(driverId: string) {
+		const vehicles = await this.prisma.client.vehicle.findMany({
+			where: { driverId, deletedAt: null },
+			orderBy: { createdAt: 'desc' },
+			select: defaultVehicleSelect,
+		});
+
+		return vehicles;
+	}
+
 	async remove(id: string) {
 		const vehicle = await this.prisma.client.vehicle.findUnique({
 			where: { id },

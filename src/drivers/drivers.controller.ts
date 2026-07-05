@@ -29,6 +29,7 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
 import { NearestDriversDto } from './dto/nearest-drivers.dto';
 import { RequestPayoutDto } from './dto/request-payout.dto';
+import { SetActiveVehicleDto } from './dto/set-active-vehicle.dto';
 
 @ApiTags('Drivers')
 @Controller('drivers')
@@ -289,6 +290,37 @@ export class DriversController {
 			page ? Number(page) : 1,
 			limit ? Number(limit) : 20,
 		);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Meus ganhos',
+		description:
+			'Retorna o resumo de ganhos do motorista autenticado (saldo disponível e pendente)',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me/earnings')
+	async myEarnings(@Req() req: Request) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.getEarningsSummary(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Definir veículo ativo',
+		description:
+			'Define qual dos veículos do motorista será o ativo para receber viagens',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Patch('me/active-vehicle')
+	async setActiveVehicle(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: SetActiveVehicleDto,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.setActiveVehicle(driver.id, dto.vehicleId);
 	}
 
 	@ApiBearerAuth()
