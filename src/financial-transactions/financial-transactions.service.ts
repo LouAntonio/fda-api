@@ -2,6 +2,7 @@ import {
 	Injectable,
 	NotFoundException,
 	BadRequestException,
+	ConflictException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import {
@@ -9,6 +10,7 @@ import {
 	PaymentStatus,
 	PaymentMethod,
 	TripStatus,
+	Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -74,25 +76,38 @@ export class FinancialTransactionsService {
 			}
 		}
 
-		const transaction =
-			await this.prisma.client.financialTransaction.create({
-				data: {
-					id: uuidv7(),
-					tripId: dto.tripId ?? null,
-					userId: dto.userId ?? null,
-					driverId: dto.driverId ?? null,
-					type: dto.type,
-					status: dto.status ?? FinancialTransactionStatus.PENDING,
-					amount: dto.amount,
-					taxAmount: dto.taxAmount ?? null,
-					currency: dto.currency ?? 'AOA',
-					description: dto.description ?? null,
-					externalReference: dto.externalReference ?? null,
-					idempotencyKey: dto.idempotencyKey ?? null,
-					metadata: (dto.metadata ?? undefined) as any,
-				},
-				select: defaultTransactionSelect,
-			});
+		let transaction;
+		try {
+			transaction =
+				await this.prisma.client.financialTransaction.create({
+					data: {
+						id: uuidv7(),
+						tripId: dto.tripId ?? null,
+						userId: dto.userId ?? null,
+						driverId: dto.driverId ?? null,
+						type: dto.type,
+						status: dto.status ?? FinancialTransactionStatus.PENDING,
+						amount: dto.amount,
+						taxAmount: dto.taxAmount ?? null,
+						currency: dto.currency ?? 'AOA',
+						description: dto.description ?? null,
+						externalReference: dto.externalReference ?? null,
+						idempotencyKey: dto.idempotencyKey ?? null,
+						metadata: (dto.metadata ?? undefined) as any,
+					},
+					select: defaultTransactionSelect,
+				});
+		} catch (err) {
+			if (
+				err instanceof Prisma.PrismaClientKnownRequestError &&
+				err.code === 'P2002'
+			) {
+				throw new ConflictException(
+					'Já existe uma transação com esta chave de idempotência',
+				);
+			}
+			throw err;
+		}
 
 		this.logger.log(
 			`FinancialTransaction ${transaction.id} created: ${transaction.type} ${Number(transaction.amount)} ${transaction.currency}`,

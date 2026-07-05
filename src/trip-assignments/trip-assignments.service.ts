@@ -2,8 +2,9 @@ import {
 	Injectable,
 	NotFoundException,
 	BadRequestException,
+	ConflictException,
 } from '@nestjs/common';
-import { TripAssignmentStatus, TripStatus } from '@prisma/client';
+import { TripAssignmentStatus, TripStatus, Prisma } from '@prisma/client';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
@@ -65,14 +66,27 @@ export class TripAssignmentsService {
 			throw new NotFoundException('Motorista não encontrado');
 		}
 
-		const assignment = await this.prisma.client.tripAssignment.create({
-			data: {
-				id: uuidv7(),
-				tripId: dto.tripId,
-				driverId: dto.driverId,
-			},
-			select: defaultAssignmentSelect,
-		});
+		let assignment;
+		try {
+			assignment = await this.prisma.client.tripAssignment.create({
+				data: {
+					id: uuidv7(),
+					tripId: dto.tripId,
+					driverId: dto.driverId,
+				},
+				select: defaultAssignmentSelect,
+			});
+		} catch (err) {
+			if (
+				err instanceof Prisma.PrismaClientKnownRequestError &&
+				err.code === 'P2002'
+			) {
+				throw new ConflictException(
+					'Esta atribuição já existe (motorista já recebeu oferta para esta viagem)',
+				);
+			}
+			throw err;
+		}
 
 		this.tripGateway.sendToUser(driver.userId, 'trip:offer', {
 			assignmentId: assignment.id,

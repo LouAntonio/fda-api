@@ -344,6 +344,7 @@ model TripAssignment {
 	driver    Driver               @relation(fields: [driverId], references: [id], onDelete: Cascade)
 	trip      Trip                 @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
+	@@unique([tripId, driverId])
 	@@index([tripId])
 	@@index([driverId])
 	@@index([deletedAt])
