@@ -6,6 +6,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { LoggerModule } from './logger/logger.module';
 import { AuthModule } from './auth/auth.module';
 import { ResendModule } from './email/resend.module';
+import { QueueModule } from './queue/queue.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { CouponsModule } from './coupons/coupons.module';
@@ -17,6 +19,8 @@ import { ZonesModule } from './zones/zones.module';
 import { TripsModule } from './trips/trips.module';
 import { TripGatewayModule } from './trip-gateway/trip-gateway.module';
 import { TripAssignmentsModule } from './trip-assignments/trip-assignments.module';
+import { DispatchModule } from './dispatch/dispatch.module';
+import { CleanupModule } from './cleanup/cleanup.module';
 import { DeliveryDetailsModule } from './delivery-details/delivery-details.module';
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
@@ -45,6 +49,8 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		LoggerModule,
 		AuthModule,
 		ResendModule,
+		QueueModule,
+		NotificationsModule,
 		UsersModule,
 		UploadsModule,
 		CouponsModule,
@@ -56,6 +62,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		TripsModule,
 		TripGatewayModule,
 		TripAssignmentsModule,
+		DispatchModule,
 		DeliveryDetailsModule,
 		TripEventsModule,
 		TripLocationPointsModule,
@@ -65,6 +72,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		ReviewsModule,
 		AuditLogsModule,
 		SupportModule,
+		CleanupModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [

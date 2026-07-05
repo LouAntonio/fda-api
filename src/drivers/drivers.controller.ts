@@ -27,6 +27,7 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
+import { NearestDriversDto } from './dto/nearest-drivers.dto';
 
 @ApiTags('Drivers')
 @Controller('drivers')
@@ -44,6 +45,18 @@ export class DriversController {
 		const user = req.user as { id: string };
 		const driver = await this.driversService.findByUserId(user.id);
 		return this.driversService.findById(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Motoristas próximos',
+		description:
+			'Retorna motoristas ONLINE e APPROVED ordenados por distância',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('nearest')
+	findNearest(@Query(ValidationPipe) dto: NearestDriversDto) {
+		return this.driversService.findNearestDrivers(dto);
 	}
 
 	@ApiBearerAuth()

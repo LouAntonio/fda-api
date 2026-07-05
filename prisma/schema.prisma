@@ -561,6 +561,7 @@ enum DeliveryStatus {
 
 enum TripAssignmentStatus {
 	OFFERED
+	ACCEPTED
 	REJECTED
 	EXPIRED
 }

@@ -3,11 +3,13 @@ import {
 	NotFoundException,
 	BadRequestException,
 } from '@nestjs/common';
-import { TripAssignmentStatus } from '@prisma/client';
+import { TripAssignmentStatus, TripStatus } from '@prisma/client';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
+import { DispatchService } from '../dispatch/dispatch.service';
+import { FcmService } from '../notifications/fcm.service';
 import { CreateTripAssignmentDto } from './dto/create-trip-assignment.dto';
 import { UpdateTripAssignmentDto } from './dto/update-trip-assignment.dto';
 import { ListTripAssignmentsDto } from './dto/list-trip-assignments.dto';
@@ -28,6 +30,8 @@ export class TripAssignmentsService {
 		private prisma: PrismaService,
 		private logger: LoggerService,
 		private tripGateway: TripGatewayService,
+		private dispatchService: DispatchService,
+		private fcm: FcmService,
 	) {}
 
 	async create(dto: CreateTripAssignmentDto) {
@@ -207,6 +211,10 @@ export class TripAssignmentsService {
 			);
 		}
 
+		if (dto.status === TripAssignmentStatus.ACCEPTED) {
+			return this.handleAccept(assignment);
+		}
+
 		const updated = await this.prisma.client.tripAssignment.update({
 			where: { id },
 			data: { status: dto.status },
@@ -266,6 +274,133 @@ export class TripAssignmentsService {
 		);
 
 		return updated;
+	}
+
+	private async handleAccept(
+		assignment: { id: string; tripId: string; driverId: string },
+	) {
+		const [trip, driver] = await Promise.all([
+			this.prisma.client.trip.findUnique({
+				where: { id: assignment.tripId },
+				select: { id: true, status: true, clientId: true },
+			}),
+			this.prisma.client.driver.findUnique({
+				where: { id: assignment.driverId },
+				select: {
+					id: true,
+					userId: true,
+					user: {
+						select: {
+							id: true,
+							name: true,
+							surname: true,
+							phoneNumber: true,
+						},
+					},
+					vehicles: {
+						where: { status: 'ACTIVE' },
+						select: {
+							id: true,
+							plateNumber: true,
+							brand: true,
+							model: true,
+							color: true,
+						},
+						take: 1,
+					},
+				},
+			}),
+		]);
+
+		if (!trip || trip.status !== TripStatus.REQUESTED) {
+			throw new BadRequestException(
+				'Esta viagem já não está disponível para aceitação',
+			);
+		}
+
+		if (!driver) {
+			throw new NotFoundException('Motorista não encontrado');
+		}
+
+		const result = await this.prisma.client.$transaction(async (tx) => {
+			const updated = await tx.tripAssignment.update({
+				where: { id: assignment.id },
+				data: { status: TripAssignmentStatus.ACCEPTED },
+				select: defaultAssignmentSelect,
+			});
+
+			await tx.trip.update({
+				where: { id: trip.id },
+				data: {
+					driverId: driver.id,
+					status: TripStatus.ACCEPTED,
+					acceptedAt: new Date(),
+				},
+			});
+
+			await tx.tripAssignment.updateMany({
+				where: {
+					tripId: trip.id,
+					status: TripAssignmentStatus.OFFERED,
+					id: { not: assignment.id },
+				},
+				data: { status: TripAssignmentStatus.EXPIRED },
+			});
+
+			return updated;
+		});
+
+		await this.dispatchService.cancelPendingTimeouts(trip.id);
+		await this.dispatchService.cancelPendingOffers(trip.id);
+
+		this.tripGateway.sendToUser(trip.clientId, 'trip:offer_accepted', {
+			assignmentId: assignment.id,
+			tripId: trip.id,
+			driverId: driver.id,
+			driverName: driver.user.name,
+		});
+
+		const vehicle = driver.vehicles[0];
+		this.tripGateway.emitDriverAssigned(
+			trip.id,
+			{
+				id: driver.id,
+				name: driver.user.name,
+				phoneNumber: driver.user.phoneNumber,
+			},
+			vehicle
+				? {
+						plateNumber: vehicle.plateNumber,
+						brand: vehicle.brand,
+						model: vehicle.model,
+						color: vehicle.color,
+					}
+				: undefined,
+		);
+
+		await Promise.all([
+			this.fcm.sendToUser(trip.clientId, {
+				title: 'Motorista a caminho',
+				body: `${driver.user.name} aceitou a sua viagem e está a caminho`,
+				data: {
+					type: 'driver_assigned',
+					tripId: trip.id,
+					driverId: driver.id,
+				},
+			}),
+			this.fcm.sendToUser(driver.userId, {
+				title: 'Viagem aceite',
+				body: 'Dirija-se ao ponto de embarque',
+				data: { type: 'trip_accepted', tripId: trip.id },
+			}),
+		]);
+
+		this.logger.log(
+			`Trip ${trip.id} accepted by driver ${driver.id}`,
+			'TripAssignmentsService',
+		);
+
+		return result;
 	}
 
 	async remove(id: string) {

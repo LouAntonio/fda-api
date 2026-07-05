@@ -340,6 +340,112 @@ export class DriversService {
 		return updated;
 	}
 
+	async findNearestDrivers(params: {
+		lat: number;
+		lng: number;
+		vehicleType?: string;
+		radiusKm?: number;
+		limit?: number;
+		excludeDriverIds?: string[];
+	}) {
+		const radiusKm = params.radiusKm ?? 10;
+		const limit = params.limit ?? 10;
+		const vehicleType = params.vehicleType;
+
+		const excludeFilter = params.excludeDriverIds?.length
+			? `AND dl."driverId" NOT IN (${params.excludeDriverIds.map((_, i) => `$${i + 5}`).join(', ')})`
+			: '';
+
+		const vehicleJoin = vehicleType
+			? `INNER JOIN "Vehicle" v ON v."driverId" = d.id AND v."type" = $4 AND v.status = 'ACTIVE' AND v."deletedAt" IS NULL`
+			: `INNER JOIN "Vehicle" v ON v."driverId" = d.id AND v.status = 'ACTIVE' AND v."deletedAt" IS NULL`;
+
+		const queryParams: unknown[] = [params.lat, params.lng, radiusKm, vehicleType ?? ''];
+		if (params.excludeDriverIds?.length) {
+			queryParams.push(...params.excludeDriverIds);
+		}
+
+		const query = `
+			SELECT
+				d.id,
+				d."userId",
+				d."ratingAverage",
+				d."ratingCount",
+				d."completedTripsCount",
+				d."availableBalance",
+				ST_X(dl.location::geometry) AS lat,
+				ST_Y(dl.location::geometry) AS lng,
+				ST_Distance(
+					dl.location::geometry,
+					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry
+				) / 1000 AS distance_km,
+				json_build_object(
+					'id', u.id,
+					'name', u.name,
+					'surname', u.surname,
+					'phoneNumber', u."phoneNumber",
+					'image', u.image
+				) AS "user",
+				json_build_object(
+					'id', v.id,
+					'plateNumber', v."plateNumber",
+					'brand', v.brand,
+					'model', v.model,
+					'color', v.color,
+					'type', v.type
+				) AS vehicle
+			FROM "DriverLocation" dl
+			INNER JOIN "Driver" d ON d.id = dl."driverId"
+			INNER JOIN "User" u ON u.id = d."userId"
+			${vehicleJoin}
+			WHERE
+				d."deletedAt" IS NULL
+				AND d."complianceStatus" = 'APPROVED'
+				AND d.availability = 'ONLINE'
+				AND ST_DWithin(
+					dl.location::geometry,
+					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry,
+					$3 * 1000
+				)
+				${excludeFilter}
+			ORDER BY distance_km ASC
+			LIMIT ${limit}
+		`;
+
+		const result = await this.prisma.$queryRawUnsafe(
+			query,
+			...queryParams,
+		);
+		const drivers = result as {
+			id: string;
+			userId: string;
+			ratingAverage: number;
+			ratingCount: number;
+			completedTripsCount: number;
+			availableBalance: string;
+			lat: number;
+			lng: number;
+			distance_km: number;
+			user: {
+				id: string;
+				name: string;
+				surname: string | null;
+				phoneNumber: string | null;
+				image: string | null;
+			};
+			vehicle: {
+				id: string;
+				plateNumber: string;
+				brand: string;
+				model: string;
+				color: string;
+				type: string;
+			};
+		}[];
+
+		return drivers;
+	}
+
 	async updateAvailability(driverId: string, dto: UpdateAvailabilityDto) {
 		const driver = await this.prisma.client.driver.findUnique({
 			where: { id: driverId },
@@ -549,7 +655,40 @@ export class DriversService {
 			'DriversService',
 		);
 
+		await this.evaluateCompliance(driverId);
+
 		return updated;
+	}
+
+	private async evaluateCompliance(driverId: string) {
+		const documents = await this.prisma.client.driverDocument.findMany({
+			where: { driverId },
+		});
+
+		if (documents.length === 0) return;
+
+		const allApproved = documents.every(
+			(doc) => doc.status === 'APPROVED',
+		);
+		const anyRejected = documents.some(
+			(doc) => doc.status === 'REJECTED',
+		);
+
+		const newStatus = allApproved
+			? 'APPROVED'
+			: anyRejected
+				? 'PENDING'
+				: 'PENDING';
+
+		await this.prisma.client.driver.update({
+			where: { id: driverId },
+			data: { complianceStatus: newStatus },
+		});
+
+		this.logger.log(
+			`Driver ${driverId} compliance auto-evaluated to ${newStatus}`,
+			'DriversService',
+		);
 	}
 
 	async deleteDocument(driverId: string, documentId: string) {

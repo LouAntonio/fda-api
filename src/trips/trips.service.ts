@@ -18,6 +18,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
+import { DispatchService } from '../dispatch/dispatch.service';
+import { FcmService } from '../notifications/fcm.service';
 import { CreateTripDto, CoordsDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
@@ -34,6 +36,7 @@ const defaultTripSelect = {
 	status: true,
 	serviceType: true,
 	deliveryStatus: true,
+	pickupCoords: true,
 	pickupAddress: true,
 	dropoffAddress: true,
 	estimatedDistanceKm: true,
@@ -108,6 +111,8 @@ export class TripsService {
 		private logger: LoggerService,
 		private couponsService: CouponsService,
 		private tripGateway: TripGatewayService,
+		private dispatchService: DispatchService,
+		private fcm: FcmService,
 	) {}
 
 	async create(dto: CreateTripDto, userId: string, userRole: UserRole) {
@@ -255,6 +260,28 @@ export class TripsService {
 			`Trip ${trip.id} created for client ${clientId} (${dto.serviceType})`,
 			'TripsService',
 		);
+
+		const coordsMatch = trip.pickupCoords.match(
+			/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
+		);
+		if (coordsMatch) {
+			const pickupLng = parseFloat(coordsMatch[1]);
+			const pickupLat = parseFloat(coordsMatch[2]);
+			await this.dispatchService
+				.enqueueOfferTrip({
+					tripId: trip.id,
+					clientId,
+					pickupLat,
+					pickupLng,
+					vehicleType: dto.vehicleType,
+				})
+				.catch((err) =>
+					this.logger.error(
+						`Failed to enqueue dispatch for trip ${trip.id}`,
+						err,
+					),
+				);
+		}
 
 		return trip;
 	}
@@ -657,6 +684,16 @@ export class TripsService {
 
 		this.tripGateway.emitTripStatus(id, nextStatus);
 
+		void this.sendStatusPushNotifications(
+			trip,
+			nextStatus,
+		).catch((err) =>
+			this.logger.error(
+				`Failed to send push for trip ${id} status ${nextStatus}`,
+				err,
+			),
+		);
+
 		if (nextStatus === TripStatus.ACCEPTED && trip.driverId) {
 			const driver = await this.prisma.client.driver.findUnique({
 				where: { id: trip.driverId },
@@ -702,6 +739,58 @@ export class TripsService {
 		);
 
 		return updated;
+	}
+
+	private async sendStatusPushNotifications(
+		trip: { id: string; clientId: string; driverId: string | null },
+		nextStatus: TripStatus,
+	) {
+		const pushData = { type: 'trip_status', tripId: trip.id };
+
+		switch (nextStatus) {
+			case TripStatus.PICKUP_IN_PROGRESS:
+				if (trip.clientId) {
+					await this.fcm.sendToUser(trip.clientId, {
+						title: 'Motorista chegou',
+						body: 'O motorista chegou ao local de embarque',
+						data: pushData,
+					});
+				}
+				break;
+
+			case TripStatus.STARTED:
+				if (trip.clientId) {
+					await this.fcm.sendToUser(trip.clientId, {
+						title: 'Viagem em curso',
+						body: 'A sua viagem começou. Boa viagem!',
+						data: pushData,
+					});
+				}
+				break;
+
+			case TripStatus.COMPLETED:
+				if (trip.clientId) {
+					await this.fcm.sendToUser(trip.clientId, {
+						title: 'Viagem concluída',
+						body: 'A sua viagem foi concluída com sucesso',
+						data: pushData,
+					});
+				}
+				break;
+
+			case TripStatus.CANCELLED:
+				if (trip.clientId) {
+					await this.fcm.sendToUser(trip.clientId, {
+						title: 'Viagem cancelada',
+						body: 'A sua viagem foi cancelada',
+						data: pushData,
+					});
+				}
+				break;
+
+			default:
+				break;
+		}
 	}
 
 	async updateDeliveryStatus(
