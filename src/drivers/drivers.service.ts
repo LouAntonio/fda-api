@@ -361,7 +361,12 @@ export class DriversService {
 			? `INNER JOIN "Vehicle" v ON v."driverId" = d.id AND v."type" = $4 AND v.status = 'ACTIVE' AND v."deletedAt" IS NULL`
 			: `INNER JOIN "Vehicle" v ON v."driverId" = d.id AND v.status = 'ACTIVE' AND v."deletedAt" IS NULL`;
 
-		const queryParams: unknown[] = [params.lat, params.lng, radiusKm, vehicleType ?? ''];
+		const queryParams: unknown[] = [
+			params.lat,
+			params.lng,
+			radiusKm,
+			vehicleType ?? '',
+		];
 		if (params.excludeDriverIds?.length) {
 			queryParams.push(...params.excludeDriverIds);
 		}
@@ -413,10 +418,7 @@ export class DriversService {
 			LIMIT ${limit}
 		`;
 
-		const result = await this.prisma.$queryRawUnsafe(
-			query,
-			...queryParams,
-		);
+		const result = await this.prisma.$queryRawUnsafe(query, ...queryParams);
 		const drivers = result as {
 			id: string;
 			userId: string;
@@ -668,12 +670,8 @@ export class DriversService {
 
 		if (documents.length === 0) return;
 
-		const allApproved = documents.every(
-			(doc) => doc.status === 'APPROVED',
-		);
-		const anyRejected = documents.some(
-			(doc) => doc.status === 'REJECTED',
-		);
+		const allApproved = documents.every((doc) => doc.status === 'APPROVED');
+		const anyRejected = documents.some((doc) => doc.status === 'REJECTED');
 
 		const newStatus = allApproved
 			? 'APPROVED'
@@ -762,7 +760,11 @@ export class DriversService {
 	async getEarningsSummary(driverId: string) {
 		const driver = await this.prisma.client.driver.findUnique({
 			where: { id: driverId },
-			select: { availableBalance: true, pendingBalance: true },
+			select: {
+				availableBalance: true,
+				pendingBalance: true,
+				deletedAt: true,
+			},
 		});
 
 		if (!driver || driver.deletedAt) {
@@ -806,11 +808,7 @@ export class DriversService {
 		return updated;
 	}
 
-	async listMyPayouts(
-		driverId: string,
-		page = 1,
-		limit = 20,
-	) {
+	async listMyPayouts(driverId: string, page = 1, limit = 20) {
 		const skip = (page - 1) * limit;
 
 		const where = { driverId, deletedAt: null as Date | null };

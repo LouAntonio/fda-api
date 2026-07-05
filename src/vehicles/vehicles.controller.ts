@@ -89,10 +89,7 @@ export class VehiclesController {
 	})
 	@UseGuards(JwtAuthGuard)
 	@Delete('me/:id')
-	async removeMyVehicle(
-		@Req() req: Request,
-		@Param('id') id: string,
-	) {
+	async removeMyVehicle(@Req() req: Request, @Param('id') id: string) {
 		const user = req.user as { id: string };
 		const driver = await this.driversService.findByUserId(user.id);
 		await this.vehiclesService.validateOwnership(id, driver.id);

@@ -7,7 +7,11 @@ export class AdminService {
 
 	async getDashboard(dateFrom?: string, dateTo?: string) {
 		const now = new Date();
-		const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		const startOfToday = new Date(
+			now.getFullYear(),
+			now.getMonth(),
+			now.getDate(),
+		);
 		const startOfWeek = new Date(now);
 		startOfWeek.setDate(now.getDate() - now.getDay());
 		startOfWeek.setHours(0, 0, 0, 0);
@@ -83,10 +87,11 @@ export class AdminService {
 					deletedAt: null,
 				},
 			}),
-			this.prisma.client.$queryRawUnsafe<
-				{ cancellationRate: number; avgRating: number }[]
-			>(
-				`SELECT
+			this.prisma.client
+				.$queryRawUnsafe<
+					{ cancellationRate: number; avgRating: number }[]
+				>(
+					`SELECT
 					COALESCE(
 						(COUNT(*) FILTER (WHERE status = 'CANCELLED'))::float / NULLIF(COUNT(*), 0) * 100,
 						0
@@ -99,7 +104,8 @@ export class AdminService {
 					LIMIT 1
 				)
 				WHERE t."deletedAt" IS NULL`,
-			).then((r) => r[0] ?? { cancellationRate: 0, avgRating: 0 }),
+				)
+				.then((r) => r[0] ?? { cancellationRate: 0, avgRating: 0 }),
 			this.prisma.client.driverDocument.count({
 				where: { status: 'PENDING' },
 			}),
@@ -334,17 +340,16 @@ export class AdminService {
 			to,
 		);
 
-		const byPaymentMethod =
-			await this.prisma.client.trip.groupBy({
-				by: ['paymentMethod'],
-				_sum: { totalPrice: true },
-				_count: { id: true },
-				where: {
-					status: 'COMPLETED',
-					completedAt: { gte: from, lte: to },
-					deletedAt: null,
-				},
-			});
+		const byPaymentMethod = await this.prisma.client.trip.groupBy({
+			by: ['paymentMethod'],
+			_sum: { totalPrice: true },
+			_count: { id: true },
+			where: {
+				status: 'COMPLETED',
+				completedAt: { gte: from, lte: to },
+				deletedAt: null,
+			},
+		});
 
 		const totals = await this.prisma.client.trip
 			.aggregate({

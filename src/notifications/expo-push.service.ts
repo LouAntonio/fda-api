@@ -86,7 +86,10 @@ export class ExpoPushService {
 	): Promise<void> {
 		for (let i = 0; i < messages.length; i += this.maxTokensPerRequest) {
 			const chunk = messages.slice(i, i + this.maxTokensPerRequest);
-			const tokenChunk = pushTokens.slice(i, i + this.maxTokensPerRequest);
+			const tokenChunk = pushTokens.slice(
+				i,
+				i + this.maxTokensPerRequest,
+			);
 
 			try {
 				await this.sendChunk(chunk, tokenChunk);

@@ -16,7 +16,9 @@ export class CleanupModule implements OnModuleInit {
 	async onModuleInit() {
 		const repeatableJobs = await this.cleanupQueue.getJobSchedulers();
 
-		if (!repeatableJobs.find((j) => j.key?.includes('expire-stale-trips'))) {
+		if (
+			!repeatableJobs.find((j) => j.key?.includes('expire-stale-trips'))
+		) {
 			await this.cleanupQueue.upsertJobScheduler(
 				'expire-stale-trips',
 				{ pattern: '*/5 * * * *' },
@@ -52,7 +54,11 @@ export class CleanupModule implements OnModuleInit {
 			);
 		}
 
-		if (!repeatableJobs.find((j) => j.key?.includes('cleanup-verifications'))) {
+		if (
+			!repeatableJobs.find((j) =>
+				j.key?.includes('cleanup-verifications'),
+			)
+		) {
 			await this.cleanupQueue.upsertJobScheduler(
 				'cleanup-verifications',
 				{ pattern: '0 4 * * *' },

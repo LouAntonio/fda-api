@@ -6,7 +6,10 @@ import { DispatchService } from './dispatch.service';
 import { DISPATCH_QUEUE } from '../queue/queue.module';
 
 @Module({
-	imports: [BullModule.registerQueue({ name: DISPATCH_QUEUE }), TripGatewayModule],
+	imports: [
+		BullModule.registerQueue({ name: DISPATCH_QUEUE }),
+		TripGatewayModule,
+	],
 	providers: [DispatchProcessor, DispatchService],
 	exports: [DispatchService],
 })

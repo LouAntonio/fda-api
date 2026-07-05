@@ -78,25 +78,24 @@ export class FinancialTransactionsService {
 
 		let transaction;
 		try {
-			transaction =
-				await this.prisma.client.financialTransaction.create({
-					data: {
-						id: uuidv7(),
-						tripId: dto.tripId ?? null,
-						userId: dto.userId ?? null,
-						driverId: dto.driverId ?? null,
-						type: dto.type,
-						status: dto.status ?? FinancialTransactionStatus.PENDING,
-						amount: dto.amount,
-						taxAmount: dto.taxAmount ?? null,
-						currency: dto.currency ?? 'AOA',
-						description: dto.description ?? null,
-						externalReference: dto.externalReference ?? null,
-						idempotencyKey: dto.idempotencyKey ?? null,
-						metadata: (dto.metadata ?? undefined) as any,
-					},
-					select: defaultTransactionSelect,
-				});
+			transaction = await this.prisma.client.financialTransaction.create({
+				data: {
+					id: uuidv7(),
+					tripId: dto.tripId ?? null,
+					userId: dto.userId ?? null,
+					driverId: dto.driverId ?? null,
+					type: dto.type,
+					status: dto.status ?? FinancialTransactionStatus.PENDING,
+					amount: dto.amount,
+					taxAmount: dto.taxAmount ?? null,
+					currency: dto.currency ?? 'AOA',
+					description: dto.description ?? null,
+					externalReference: dto.externalReference ?? null,
+					idempotencyKey: dto.idempotencyKey ?? null,
+					metadata: (dto.metadata ?? undefined) as any,
+				},
+				select: defaultTransactionSelect,
+			});
 		} catch (err) {
 			if (
 				err instanceof Prisma.PrismaClientKnownRequestError &&

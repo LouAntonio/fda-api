@@ -290,9 +290,11 @@ export class TripAssignmentsService {
 		return updated;
 	}
 
-	private async handleAccept(
-		assignment: { id: string; tripId: string; driverId: string },
-	) {
+	private async handleAccept(assignment: {
+		id: string;
+		tripId: string;
+		driverId: string;
+	}) {
 		const [trip, driver] = await Promise.all([
 			this.prisma.client.trip.findUnique({
 				where: { id: assignment.tripId },

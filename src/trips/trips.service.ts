@@ -684,10 +684,7 @@ export class TripsService {
 
 		this.tripGateway.emitTripStatus(id, nextStatus);
 
-		void this.sendStatusPushNotifications(
-			trip,
-			nextStatus,
-		).catch((err) =>
+		void this.sendStatusPushNotifications(trip, nextStatus).catch((err) =>
 			this.logger.error(
 				`Failed to send push for trip ${id} status ${nextStatus}`,
 				err,
