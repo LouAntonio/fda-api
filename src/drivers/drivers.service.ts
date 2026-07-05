@@ -16,6 +16,7 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
+import { RequestPayoutDto } from './dto/request-payout.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
 
 const defaultDriverSelect = {
@@ -712,6 +713,85 @@ export class DriversService {
 
 		return {
 			msg: 'Documento removido com sucesso',
+		};
+	}
+
+	async requestPayout(driverId: string, amount: number) {
+		const driver = await this.prisma.client.driver.findUnique({
+			where: { id: driverId },
+			select: { id: true, availableBalance: true, deletedAt: true },
+		});
+
+		if (!driver || driver.deletedAt) {
+			throw new NotFoundException('Motorista não encontrado');
+		}
+
+		if (Number(driver.availableBalance) < amount) {
+			throw new BadRequestException('Saldo insuficiente');
+		}
+
+		const payout = await this.prisma.client.driverPayout.create({
+			data: {
+				id: uuidv7(),
+				driverId,
+				amount,
+			},
+			select: {
+				id: true,
+				driverId: true,
+				amount: true,
+				processedAt: true,
+				reference: true,
+				createdAt: true,
+			},
+		});
+
+		await this.prisma.client.driver.update({
+			where: { id: driverId },
+			data: { availableBalance: { decrement: amount } },
+		});
+
+		this.logger.log(
+			`DriverPayout ${payout.id} requested by driver ${driverId}, amount ${amount}`,
+			'DriversService',
+		);
+
+		return payout;
+	}
+
+	async listMyPayouts(
+		driverId: string,
+		page = 1,
+		limit = 20,
+	) {
+		const skip = (page - 1) * limit;
+
+		const where = { driverId, deletedAt: null as Date | null };
+
+		const [payouts, total] = await Promise.all([
+			this.prisma.client.driverPayout.findMany({
+				where,
+				skip,
+				take: limit,
+				orderBy: { createdAt: 'desc' },
+				select: {
+					id: true,
+					driverId: true,
+					amount: true,
+					processedAt: true,
+					reference: true,
+					createdAt: true,
+				},
+			}),
+			this.prisma.client.driverPayout.count({ where }),
+		]);
+
+		return {
+			payouts,
+			total,
+			page,
+			limit,
+			totalPages: Math.ceil(total / limit),
 		};
 	}
 }

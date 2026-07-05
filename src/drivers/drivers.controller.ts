@@ -28,6 +28,7 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
 import { NearestDriversDto } from './dto/nearest-drivers.dto';
+import { RequestPayoutDto } from './dto/request-payout.dto';
 
 @ApiTags('Drivers')
 @Controller('drivers')
@@ -250,6 +251,44 @@ export class DriversController {
 			.then((driver) =>
 				this.driversService.updateLocation(driver.id, dto),
 			);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Solicitar saque',
+		description:
+			'Solicita um saque do saldo disponível (apenas dinheiro vivo). O processamento é feito manualmente pela administração.',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Post('me/payouts')
+	async requestPayout(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: RequestPayoutDto,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.requestPayout(driver.id, dto.amount);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Meus saques',
+		description: 'Lista os saques solicitados pelo motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me/payouts')
+	async listMyPayouts(
+		@Req() req: Request,
+		@Query('page') page?: string,
+		@Query('limit') limit?: string,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.listMyPayouts(
+			driver.id,
+			page ? Number(page) : 1,
+			limit ? Number(limit) : 20,
+		);
 	}
 
 	@ApiBearerAuth()
