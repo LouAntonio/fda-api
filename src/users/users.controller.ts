@@ -291,6 +291,22 @@ export class UsersController {
 
 	@ApiBearerAuth()
 	@ApiOperation({
+		summary: 'Registar meu push token',
+		description:
+			'Regista o push token do dispositivo do próprio utilizador autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Post('me/push-tokens')
+	createMyPushToken(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: CreatePushTokenDto,
+	) {
+		const user = req.user as { id: string };
+		return this.usersService.createPushToken(user.id, dto);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
 		summary: 'Listar push tokens',
 		description: 'Lista os push tokens de um utilizador',
 	})

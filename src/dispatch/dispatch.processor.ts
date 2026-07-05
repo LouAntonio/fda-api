@@ -5,7 +5,7 @@ import { uuidv7 } from 'uuidv7';
 import { TripAssignmentStatus, TripStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
-import { FcmService } from '../notifications/fcm.service';
+import { ExpoPushService } from '../notifications/expo-push.service';
 import { DISPATCH_QUEUE } from '../queue/queue.module';
 import {
 	DispatchService,
@@ -22,7 +22,7 @@ export class DispatchProcessor extends WorkerHost {
 	constructor(
 		private prisma: PrismaService,
 		private tripGateway: TripGatewayService,
-		private fcm: FcmService,
+		private expoPush: ExpoPushService,
 		private dispatchService: DispatchService,
 	) {
 		super();
@@ -161,7 +161,7 @@ export class DispatchProcessor extends WorkerHost {
 					message:
 						'Nenhum motorista disponível no momento. Tente novamente mais tarde.',
 				});
-				await this.fcm.sendToUser(clientId, {
+				await this.expoPush.sendToUser(clientId, {
 					title: 'Sem motoristas disponíveis',
 					body: 'Não encontramos motoristas perto de si. Tente novamente mais tarde.',
 					data: { type: 'no_drivers', tripId },
@@ -198,7 +198,7 @@ export class DispatchProcessor extends WorkerHost {
 
 		this.tripGateway.sendToUser(nearest.userId, 'trip:offer', offerData);
 
-		await this.fcm.sendToUser(nearest.userId, {
+		await this.expoPush.sendToUser(nearest.userId, {
 			title: 'Nova solicitação de viagem',
 			body: `De ${trip.pickupAddress} para ${trip.dropoffAddress}`,
 			data: {

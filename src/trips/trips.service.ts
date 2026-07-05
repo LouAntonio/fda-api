@@ -19,7 +19,7 @@ import { LoggerService } from '../logger/logger.service';
 import { CouponsService } from '../coupons/coupons.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { DispatchService } from '../dispatch/dispatch.service';
-import { FcmService } from '../notifications/fcm.service';
+import { ExpoPushService } from '../notifications/expo-push.service';
 import { CreateTripDto, CoordsDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
@@ -112,7 +112,7 @@ export class TripsService {
 		private couponsService: CouponsService,
 		private tripGateway: TripGatewayService,
 		private dispatchService: DispatchService,
-		private fcm: FcmService,
+		private expoPush: ExpoPushService,
 	) {}
 
 	async create(dto: CreateTripDto, userId: string, userRole: UserRole) {
@@ -750,7 +750,7 @@ export class TripsService {
 		switch (nextStatus) {
 			case TripStatus.PICKUP_IN_PROGRESS:
 				if (trip.clientId) {
-					await this.fcm.sendToUser(trip.clientId, {
+					await this.expoPush.sendToUser(trip.clientId, {
 						title: 'Motorista chegou',
 						body: 'O motorista chegou ao local de embarque',
 						data: pushData,
@@ -760,7 +760,7 @@ export class TripsService {
 
 			case TripStatus.STARTED:
 				if (trip.clientId) {
-					await this.fcm.sendToUser(trip.clientId, {
+					await this.expoPush.sendToUser(trip.clientId, {
 						title: 'Viagem em curso',
 						body: 'A sua viagem começou. Boa viagem!',
 						data: pushData,
@@ -770,7 +770,7 @@ export class TripsService {
 
 			case TripStatus.COMPLETED:
 				if (trip.clientId) {
-					await this.fcm.sendToUser(trip.clientId, {
+					await this.expoPush.sendToUser(trip.clientId, {
 						title: 'Viagem concluída',
 						body: 'A sua viagem foi concluída com sucesso',
 						data: pushData,
@@ -780,7 +780,7 @@ export class TripsService {
 
 			case TripStatus.CANCELLED:
 				if (trip.clientId) {
-					await this.fcm.sendToUser(trip.clientId, {
+					await this.expoPush.sendToUser(trip.clientId, {
 						title: 'Viagem cancelada',
 						body: 'A sua viagem foi cancelada',
 						data: pushData,

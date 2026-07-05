@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { DispatchService } from '../dispatch/dispatch.service';
-import { FcmService } from '../notifications/fcm.service';
+import { ExpoPushService } from '../notifications/expo-push.service';
 import { CreateTripAssignmentDto } from './dto/create-trip-assignment.dto';
 import { UpdateTripAssignmentDto } from './dto/update-trip-assignment.dto';
 import { ListTripAssignmentsDto } from './dto/list-trip-assignments.dto';
@@ -31,7 +31,7 @@ export class TripAssignmentsService {
 		private logger: LoggerService,
 		private tripGateway: TripGatewayService,
 		private dispatchService: DispatchService,
-		private fcm: FcmService,
+		private expoPush: ExpoPushService,
 	) {}
 
 	async create(dto: CreateTripAssignmentDto) {
@@ -379,7 +379,7 @@ export class TripAssignmentsService {
 		);
 
 		await Promise.all([
-			this.fcm.sendToUser(trip.clientId, {
+			this.expoPush.sendToUser(trip.clientId, {
 				title: 'Motorista a caminho',
 				body: `${driver.user.name} aceitou a sua viagem e está a caminho`,
 				data: {
@@ -388,7 +388,7 @@ export class TripAssignmentsService {
 					driverId: driver.id,
 				},
 			}),
-			this.fcm.sendToUser(driver.userId, {
+			this.expoPush.sendToUser(driver.userId, {
 				title: 'Viagem aceite',
 				body: 'Dirija-se ao ponto de embarque',
 				data: { type: 'trip_accepted', tripId: trip.id },

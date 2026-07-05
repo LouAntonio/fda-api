@@ -1,9 +1,9 @@
 import { Global, Module } from '@nestjs/common';
-import { FcmService } from './fcm.service';
+import { ExpoPushService } from './expo-push.service';
 
 @Global()
 @Module({
-	providers: [FcmService],
-	exports: [FcmService],
+	providers: [ExpoPushService],
+	exports: [ExpoPushService],
 })
 export class NotificationsModule {}
