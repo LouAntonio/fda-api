@@ -33,6 +33,10 @@ export class ExpoPushService {
 
 	constructor(private prisma: PrismaService) {}
 
+	private isConfigured(): boolean {
+		return !!(process.env.EXPO_ACCESS_TOKEN && process.env.EXPO_PROJECT_ID);
+	}
+
 	async sendToUser(
 		userId: string,
 		payload: {
@@ -41,6 +45,13 @@ export class ExpoPushService {
 			data?: Record<string, string>;
 		},
 	): Promise<void> {
+		if (!this.isConfigured()) {
+			this.logger.warn(
+				'EXPO_ACCESS_TOKEN or EXPO_PROJECT_ID not set, skipping push notification',
+			);
+			return;
+		}
+
 		try {
 			const pushTokens = await this.prisma.client.pushToken.findMany({
 				where: { userId },

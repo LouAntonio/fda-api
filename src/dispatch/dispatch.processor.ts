@@ -79,6 +79,30 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
+		const sqlParams: unknown[] = [pickupLat, pickupLng];
+		let paramIdx = 3;
+
+		const validVehicleTypes = ['MOTO', 'CARRO'];
+		const safeVehicleType =
+			vehicleType && validVehicleTypes.includes(vehicleType)
+				? vehicleType
+				: null;
+
+		let vehicleTypeClause = '';
+		if (safeVehicleType) {
+			vehicleTypeClause = `AND v.type = $${paramIdx++}`;
+			sqlParams.push(safeVehicleType);
+		}
+
+		let excludedClause = '';
+		if (excludedDriverIds?.length) {
+			const placeholders = excludedDriverIds.map(
+				() => `$${paramIdx++}`,
+			);
+			excludedClause = `AND d.id NOT IN (${placeholders.join(', ')})`;
+			sqlParams.push(...excludedDriverIds);
+		}
+
 		const nearestDrivers = await this.prisma.client.$queryRawUnsafe<
 			{
 				id: string;
@@ -124,12 +148,8 @@ export class DispatchProcessor extends WorkerHost {
 				d."deletedAt" IS NULL
 				AND d."complianceStatus" = 'APPROVED'
 				AND d.availability = 'ONLINE'
-				${vehicleType ? `AND v.type = '${vehicleType}'` : ''}
-				${
-					excludedDriverIds?.length
-						? `AND d.id NOT IN (${excludedDriverIds.map((_, i) => `$${i + 3}`).join(', ')})`
-						: ''
-				}
+				${vehicleTypeClause}
+				${excludedClause}
 				AND ST_DWithin(
 					dl.location::geometry,
 					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry,
@@ -138,9 +158,7 @@ export class DispatchProcessor extends WorkerHost {
 			ORDER BY distance_km ASC
 			LIMIT 1
 			`,
-			...(excludedDriverIds?.length
-				? [pickupLat, pickupLng, ...excludedDriverIds]
-				: [pickupLat, pickupLng]),
+			...sqlParams,
 		);
 
 		if (nearestDrivers.length === 0) {

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { VehicleType } from '@prisma/client';
 import { DISPATCH_QUEUE } from '../queue/queue.module';
 
 export interface OfferTripJobData {
@@ -8,7 +9,7 @@ export interface OfferTripJobData {
 	clientId: string;
 	pickupLat: number;
 	pickupLng: number;
-	vehicleType?: string;
+	vehicleType?: VehicleType;
 	excludedDriverIds?: string[];
 	attempt?: number;
 }

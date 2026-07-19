@@ -9,6 +9,7 @@ import {
 	Query,
 	Req,
 	UseGuards,
+	ForbiddenException,
 	ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -37,6 +38,21 @@ import { CreatePushTokenDto } from './dto/create-push-token.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
 	constructor(private usersService: UsersService) {}
+
+	private checkOwnershipOrAdmin(id: string, req: Request): void {
+		const user = req.user as { id: string; role: UserRole };
+		if (user.id !== id) {
+			const isAdmin =
+				user.role === UserRole.SUPER_ADMIN ||
+				user.role === UserRole.OPERATIONS ||
+				user.role === UserRole.SUPPORT;
+			if (!isAdmin) {
+				throw new ForbiddenException(
+					'Não tem permissão para aceder a este recurso',
+				);
+			}
+		}
+	}
 
 	@ApiBearerAuth()
 	@ApiOperation({
@@ -222,7 +238,8 @@ export class UsersController {
 		description: 'Lista os endereços de um utilizador',
 	})
 	@Get(':id/addresses')
-	listAddresses(@Param('id') id: string) {
+	listAddresses(@Param('id') id: string, @Req() req: Request) {
+		this.checkOwnershipOrAdmin(id, req);
 		return this.usersService.listAddresses(id);
 	}
 
@@ -235,7 +252,9 @@ export class UsersController {
 	createAddress(
 		@Param('id') id: string,
 		@Body(ValidationPipe) dto: CreateAddressDto,
+		@Req() req: Request,
 	) {
+		this.checkOwnershipOrAdmin(id, req);
 		return this.usersService.createAddress(id, dto);
 	}
 
@@ -249,7 +268,9 @@ export class UsersController {
 		@Param('id') id: string,
 		@Param('addressId') addressId: string,
 		@Body(ValidationPipe) dto: UpdateAddressDto,
+		@Req() req: Request,
 	) {
+		this.checkOwnershipOrAdmin(id, req);
 		return this.usersService.updateAddress(id, addressId, dto);
 	}
 
@@ -262,7 +283,9 @@ export class UsersController {
 	deleteAddress(
 		@Param('id') id: string,
 		@Param('addressId') addressId: string,
+		@Req() req: Request,
 	) {
+		this.checkOwnershipOrAdmin(id, req);
 		return this.usersService.deleteAddress(id, addressId);
 	}
 
@@ -272,6 +295,7 @@ export class UsersController {
 		description: 'Lista as sessões ativas de um utilizador',
 	})
 	@Get(':id/sessions')
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	listSessions(@Param('id') id: string) {
 		return this.usersService.listSessions(id);
 	}
@@ -282,6 +306,7 @@ export class UsersController {
 		description: 'Revoga uma sessão específica de um utilizador',
 	})
 	@Delete(':id/sessions/:sessionId')
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	revokeSession(
 		@Param('id') id: string,
 		@Param('sessionId') sessionId: string,
@@ -311,6 +336,7 @@ export class UsersController {
 		description: 'Lista os push tokens de um utilizador',
 	})
 	@Get(':id/push-tokens')
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	listPushTokens(@Param('id') id: string) {
 		return this.usersService.listPushTokens(id);
 	}
@@ -321,6 +347,7 @@ export class UsersController {
 		description: 'Regista um novo push token para o utilizador',
 	})
 	@Post(':id/push-tokens')
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	createPushToken(
 		@Param('id') id: string,
 		@Body(ValidationPipe) dto: CreatePushTokenDto,
@@ -334,6 +361,7 @@ export class UsersController {
 		description: 'Remove um push token do utilizador',
 	})
 	@Delete(':id/push-tokens/:tokenId')
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	removePushToken(
 		@Param('id') id: string,
 		@Param('tokenId') tokenId: string,
