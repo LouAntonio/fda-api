@@ -12,6 +12,7 @@ import {
 	ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -38,6 +39,7 @@ export class TripsController {
 		description:
 			'Cria uma nova viagem com cálculo de preço. CLIENT cria para si próprio; admins podem especificar clientId',
 	})
+	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@UseGuards(JwtAuthGuard)
 	@Post()
 	create(@Body(ValidationPipe) dto: CreateTripDto, @Req() req: Request) {

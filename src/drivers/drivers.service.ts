@@ -369,6 +369,7 @@ export class DriversService {
 		if (params.excludeDriverIds?.length) {
 			queryParams.push(...params.excludeDriverIds);
 		}
+		queryParams.push(limit);
 
 		const query = `
 			SELECT
@@ -414,7 +415,7 @@ export class DriversService {
 				)
 				${excludeFilter}
 			ORDER BY distance_km ASC
-			LIMIT ${limit}
+			LIMIT $${queryParams.length}
 		`;
 
 		const drivers = await this.prisma.client.$queryRawUnsafe<

@@ -12,6 +12,7 @@ import {
 	OfferTripJobData,
 	DispatchTimeoutJobData,
 	MAX_DISPATCH_ATTEMPTS,
+	DISPATCH_TIMEOUT_MS,
 } from './dispatch.service';
 
 @Processor(DISPATCH_QUEUE)
@@ -212,6 +213,7 @@ export class DispatchProcessor extends WorkerHost {
 			pickupLat: nearest.lat,
 			pickupLng: nearest.lng,
 			vehicle: nearest.vehicle,
+			offerTimeoutMs: DISPATCH_TIMEOUT_MS,
 		};
 
 		this.tripGateway.sendToUser(nearest.userId, 'trip:offer', offerData);

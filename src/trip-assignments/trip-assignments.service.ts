@@ -347,6 +347,17 @@ export class TripAssignmentsService {
 		}
 
 		const result = await this.prisma.client.$transaction(async (tx) => {
+			const currentTrip = await tx.trip.findUnique({
+				where: { id: trip.id },
+				select: { status: true },
+			});
+
+			if (!currentTrip || currentTrip.status !== TripStatus.REQUESTED) {
+				throw new BadRequestException(
+					'Esta viagem já não está disponível para aceitação',
+				);
+			}
+
 			const updated = await tx.tripAssignment.update({
 				where: { id: assignment.id },
 				data: { status: TripAssignmentStatus.ACCEPTED },

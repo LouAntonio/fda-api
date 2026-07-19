@@ -82,7 +82,11 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	@SubscribeMessage('join:trip')
-	handleJoinTrip(client: Socket, tripId: string) {
+	handleJoinTrip(client: AuthenticatedSocket, tripId: string) {
+		if (!client.user) {
+			client.emit('error', { message: 'Autenticação necessária' });
+			return;
+		}
 		const room = `trip:${tripId}`;
 		void client.join(room);
 		this.trackRoom(client.id, room);
