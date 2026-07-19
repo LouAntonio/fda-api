@@ -191,6 +191,31 @@ export class DispatchProcessor extends WorkerHost {
 
 		const nearest = nearestDrivers[0];
 
+		const driverStillAvailable = await this.prisma.client.driver.findUnique(
+			{
+				where: { id: nearest.id },
+				select: { availability: true },
+			},
+		);
+
+		if (
+			!driverStillAvailable ||
+			driverStillAvailable.availability !== 'ONLINE'
+		) {
+			this.logger.log(
+				`Driver ${nearest.id} is no longer available, re-enqueueing dispatch`,
+			);
+			await this.dispatchService.enqueueOfferTrip({
+				...job.data,
+				excludedDriverIds: [
+					...(excludedDriverIds ?? []),
+					nearest.id,
+				],
+				attempt: currentAttempt,
+			});
+			return;
+		}
+
 		const assignment = await this.prisma.client.tripAssignment.create({
 			data: {
 				id: uuidv7(),
@@ -199,6 +224,25 @@ export class DispatchProcessor extends WorkerHost {
 				status: TripAssignmentStatus.OFFERED,
 			},
 		});
+
+		const tripStillActive = await this.prisma.client.trip.findUnique({
+			where: { id: tripId },
+			select: { status: true },
+		});
+
+		if (
+			!tripStillActive ||
+			tripStillActive.status !== TripStatus.REQUESTED
+		) {
+			this.logger.log(
+				`Trip ${tripId} no longer REQUESTED after assignment creation, expiring assignment`,
+			);
+			await this.prisma.client.tripAssignment.update({
+				where: { id: assignment.id },
+				data: { status: TripAssignmentStatus.EXPIRED },
+			});
+			return;
+		}
 
 		const offerData = {
 			assignmentId: assignment.id,

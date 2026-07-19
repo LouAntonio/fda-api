@@ -27,6 +27,7 @@ import { UpdateDeliveryStatusDto } from './dto/update-delivery-status.dto';
 import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripStatsDto } from './dto/trip-stats.dto';
+import { CancelTripDto } from './dto/cancel-trip.dto';
 
 @ApiTags('Viagens')
 @Controller('trips')
@@ -176,11 +177,16 @@ export class TripsController {
 	@Post(':id/cancel')
 	cancel(
 		@Param('id') id: string,
-		@Body('cancelReason') cancelReason: string,
+		@Body(ValidationPipe) dto: CancelTripDto,
 		@Req() req: Request,
 	) {
 		const user = req.user as { id: string; role: UserRole };
-		return this.tripsService.cancel(id, cancelReason, user.id, user.role);
+		return this.tripsService.cancel(
+			id,
+			dto.cancelReason,
+			user.id,
+			user.role,
+		);
 	}
 
 	@ApiBearerAuth()

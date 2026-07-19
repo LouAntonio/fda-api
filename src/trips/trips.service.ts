@@ -93,7 +93,7 @@ const deliveryStatusTransitions: Record<DeliveryStatus, DeliveryStatus[]> = {
 const statusTimestampField: Record<TripStatus, string> = {
 	[TripStatus.REQUESTED]: 'requestedAt',
 	[TripStatus.ACCEPTED]: 'acceptedAt',
-	[TripStatus.PICKUP_IN_PROGRESS]: 'requestedAt',
+	[TripStatus.PICKUP_IN_PROGRESS]: 'startedAt',
 	[TripStatus.STARTED]: 'startedAt',
 	[TripStatus.COMPLETED]: 'completedAt',
 	[TripStatus.CANCELLED]: 'cancelledAt',
