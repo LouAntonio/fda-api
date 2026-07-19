@@ -1,12 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
+import { SupportTicketStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../logger/logger.service';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';
-import {
-	ListSupportTicketsDto,
-	SupportTicketStatus,
-} from './dto/list-support-tickets.dto';
+import { ListSupportTicketsDto } from './dto/list-support-tickets.dto';
 import { UpdateSupportTicketDto } from './dto/update-support-ticket.dto';
 
 @Injectable()
@@ -25,7 +23,7 @@ export class SupportService {
 				email: dto.email ?? null,
 				phone: dto.phone ?? null,
 				message: dto.message,
-				status: 'OPEN',
+				status: SupportTicketStatus.OPEN,
 			},
 		});
 

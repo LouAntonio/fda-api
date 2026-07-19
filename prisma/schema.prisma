@@ -490,7 +490,7 @@ model SupportTicket {
 	email     String?
 	phone     String?
 	message   String
-	status    String   @default("OPEN")
+	status    SupportTicketStatus   @default(OPEN)
 	createdAt DateTime @default(now())
 	updatedAt DateTime @updatedAt
 	user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -641,4 +641,10 @@ enum TripEventType {
 	ARRIVED_DROPOFF
 	TRIP_COMPLETED
 	TRIP_CANCELLED
+}
+
+enum SupportTicketStatus {
+	OPEN
+	IN_PROGRESS
+	RESOLVED
 }

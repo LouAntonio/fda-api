@@ -1,12 +1,7 @@
-import { IsOptional, IsString, IsEnum, IsInt, Min } from 'class-validator';
+import { IsOptional, IsEnum, IsInt, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-
-export enum SupportTicketStatus {
-	OPEN = 'OPEN',
-	IN_PROGRESS = 'IN_PROGRESS',
-	RESOLVED = 'RESOLVED',
-}
+import { SupportTicketStatus } from '@prisma/client';
 
 export class ListSupportTicketsDto {
 	@ApiPropertyOptional({ enum: SupportTicketStatus })
