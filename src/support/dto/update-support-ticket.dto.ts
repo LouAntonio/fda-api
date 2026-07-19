@@ -7,7 +7,10 @@ export class UpdateSupportTicketDto {
 	@IsEnum(SupportTicketStatus)
 	status!: SupportTicketStatus;
 
-	@ApiProperty({ required: false, example: 'Ticket resolvido via contacto telefónico' })
+	@ApiProperty({
+		required: false,
+		example: 'Ticket resolvido via contacto telefónico',
+	})
 	@IsOptional()
 	@IsString()
 	notes?: string;

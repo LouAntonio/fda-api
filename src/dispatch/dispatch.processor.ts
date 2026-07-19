@@ -97,9 +97,7 @@ export class DispatchProcessor extends WorkerHost {
 
 		let excludedClause = '';
 		if (excludedDriverIds?.length) {
-			const placeholders = excludedDriverIds.map(
-				() => `$${paramIdx++}`,
-			);
+			const placeholders = excludedDriverIds.map(() => `$${paramIdx++}`);
 			excludedClause = `AND d.id NOT IN (${placeholders.join(', ')})`;
 			sqlParams.push(...excludedDriverIds);
 		}
@@ -207,10 +205,7 @@ export class DispatchProcessor extends WorkerHost {
 			);
 			await this.dispatchService.enqueueOfferTrip({
 				...job.data,
-				excludedDriverIds: [
-					...(excludedDriverIds ?? []),
-					nearest.id,
-				],
+				excludedDriverIds: [...(excludedDriverIds ?? []), nearest.id],
 				attempt: currentAttempt,
 			});
 			return;

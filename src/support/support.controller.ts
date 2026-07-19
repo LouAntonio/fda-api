@@ -48,11 +48,7 @@ export class SupportController {
 		description: 'Lista paginada com filtro por status',
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	@Get()
 	list(@Query(ValidationPipe) dto: ListSupportTicketsDto) {
 		return this.supportService.findAll(dto);
@@ -61,14 +57,11 @@ export class SupportController {
 	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Atualizar ticket de suporte (admin)',
-		description: 'Altera o status de um ticket (OPEN → IN_PROGRESS → RESOLVED)',
+		description:
+			'Altera o status de um ticket (OPEN → IN_PROGRESS → RESOLVED)',
 	})
 	@UseGuards(JwtAuthGuard, RolesGuard)
-	@Roles(
-		UserRole.SUPER_ADMIN,
-		UserRole.OPERATIONS,
-		UserRole.SUPPORT,
-	)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	@Patch(':id')
 	update(
 		@Param('id') id: string,
