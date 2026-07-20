@@ -68,8 +68,8 @@ export class DispatchService {
 				(j.data as { tripId: string }).tripId === tripId,
 		);
 		for (const job of timeoutJobs) {
-			if (job.isActive()) {
-				await job.discard();
+			if (await job.isActive()) {
+				job.discard();
 			}
 			await job.remove();
 		}
