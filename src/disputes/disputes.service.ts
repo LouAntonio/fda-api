@@ -2,6 +2,7 @@ import {
 	Injectable,
 	NotFoundException,
 	BadRequestException,
+	ForbiddenException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,11 +34,25 @@ export class DisputesService {
 	async create(dto: CreateDisputeDto, openedByUserId: string) {
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: dto.tripId },
-			select: { id: true, deletedAt: true },
+			select: {
+				id: true,
+				deletedAt: true,
+				clientId: true,
+				driverId: true,
+			},
 		});
 
 		if (!trip || trip.deletedAt) {
 			throw new NotFoundException('Viagem não encontrada');
+		}
+
+		if (
+			trip.clientId !== openedByUserId &&
+			trip.driverId !== openedByUserId
+		) {
+			throw new ForbiddenException(
+				'Apenas o cliente ou motorista da viagem pode abrir uma disputa',
+			);
 		}
 
 		const dispute = await this.prisma.client.dispute.create({

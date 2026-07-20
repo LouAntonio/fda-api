@@ -1,7 +1,8 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { performance } from 'perf_hooks';
 import * as pkg from '../../package.json';
 
@@ -28,9 +29,11 @@ export class HealthController {
 		private readonly cloudinary: CloudinaryService,
 	) {}
 
+	@ApiBearerAuth()
+	@UseGuards(JwtAuthGuard)
 	@Get()
 	@ApiOperation({
-		summary: 'Health check completo',
+		summary: 'Health check completo (autenticado)',
 		description:
 			'Retorna métricas detalhadas de saúde da API: sistema, memória, base de dados, Cloudinary, latência',
 	})
