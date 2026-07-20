@@ -211,31 +211,49 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
-		const assignment = await this.prisma.client.tripAssignment.create({
-			data: {
-				id: uuidv7(),
-				tripId,
-				driverId: nearest.id,
-				status: TripAssignmentStatus.OFFERED,
+		const assignment = await this.prisma.client.$transaction(
+			async (tx) => {
+				const [lockedTrip] = await tx.$queryRawUnsafe<
+					{ id: string; status: string }[]
+				>(
+					`SELECT id, status FROM "Trip" WHERE id = $1 FOR UPDATE`,
+					tripId,
+				);
+
+				if (
+					!lockedTrip ||
+					lockedTrip.status !== TripStatus.REQUESTED
+				) {
+					return null;
+				}
+
+				const existing = await tx.tripAssignment.findFirst({
+					where: {
+						tripId,
+						status: TripAssignmentStatus.OFFERED,
+					},
+					select: { id: true },
+				});
+
+				if (existing) {
+					this.logger.warn(
+						`Trip ${tripId} already has an active assignment ${existing.id}, skipping`,
+					);
+					return null;
+				}
+
+				return tx.tripAssignment.create({
+					data: {
+						id: uuidv7(),
+						tripId,
+						driverId: nearest.id,
+						status: TripAssignmentStatus.OFFERED,
+					},
+				});
 			},
-		});
+		);
 
-		const tripStillActive = await this.prisma.client.trip.findUnique({
-			where: { id: tripId },
-			select: { status: true },
-		});
-
-		if (
-			!tripStillActive ||
-			tripStillActive.status !== TripStatus.REQUESTED
-		) {
-			this.logger.log(
-				`Trip ${tripId} no longer REQUESTED after assignment creation, expiring assignment`,
-			);
-			await this.prisma.client.tripAssignment.update({
-				where: { id: assignment.id },
-				data: { status: TripAssignmentStatus.EXPIRED },
-			});
+		if (!assignment) {
 			return;
 		}
 

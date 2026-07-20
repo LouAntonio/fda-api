@@ -44,24 +44,28 @@ export class DriverPayoutsService {
 			throw new BadRequestException('Saldo insuficiente do motorista');
 		}
 
-		const payout = await this.prisma.client.driverPayout.create({
-			data: {
-				id: uuidv7(),
-				driverId: dto.driverId,
-				amount: dto.amount,
-				processedAt: dto.processedAt
-					? new Date(dto.processedAt)
-					: new Date(),
-				reference: dto.reference ?? null,
-			},
-			select: defaultPayoutSelect,
-		});
+		const payout = await this.prisma.client.$transaction(async (tx) => {
+			const payout = await tx.driverPayout.create({
+				data: {
+					id: uuidv7(),
+					driverId: dto.driverId,
+					amount: dto.amount,
+					processedAt: dto.processedAt
+						? new Date(dto.processedAt)
+						: new Date(),
+					reference: dto.reference ?? null,
+				},
+				select: defaultPayoutSelect,
+			});
 
-		await this.prisma.client.driver.update({
-			where: { id: dto.driverId },
-			data: {
-				availableBalance: { decrement: dto.amount },
-			},
+			await tx.driver.update({
+				where: { id: dto.driverId },
+				data: {
+					availableBalance: { decrement: dto.amount },
+				},
+			});
+
+			return payout;
 		});
 
 		this.logger.log(

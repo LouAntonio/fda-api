@@ -415,35 +415,41 @@ export class FinancialTransactionsService {
 
 		const amount = dto.amount ?? Number(trip.totalPrice);
 
-		const transaction =
-			await this.prisma.client.financialTransaction.create({
-				data: {
-					id: uuidv7(),
-					tripId: trip.id,
-					driverId: dto.driverId,
-					type: 'CASH_COLLECTION',
-					status: FinancialTransactionStatus.COMPLETED,
-					amount,
-					currency: 'AOA',
-					description:
-						dto.notes ?? `Recolha de cash - viagem ${trip.id}`,
-				},
-				select: defaultTransactionSelect,
-			});
+		const transaction = await this.prisma.client.$transaction(
+			async (tx) => {
+				const t = await tx.financialTransaction.create({
+					data: {
+						id: uuidv7(),
+						tripId: trip.id,
+						driverId: dto.driverId,
+						type: 'CASH_COLLECTION',
+						status: FinancialTransactionStatus.COMPLETED,
+						amount,
+						currency: 'AOA',
+						description:
+							dto.notes ??
+							`Recolha de cash - viagem ${trip.id}`,
+					},
+					select: defaultTransactionSelect,
+				});
 
-		await this.prisma.client.trip.update({
-			where: { id: trip.id },
-			data: {
-				paymentStatus: PaymentStatus.PAID,
-			},
-		});
+				await tx.trip.update({
+					where: { id: trip.id },
+					data: {
+						paymentStatus: PaymentStatus.PAID,
+					},
+				});
 
-		await this.prisma.client.driver.update({
-			where: { id: dto.driverId },
-			data: {
-				pendingBalance: { increment: amount },
+				await tx.driver.update({
+					where: { id: dto.driverId },
+					data: {
+						pendingBalance: { increment: amount },
+					},
+				});
+
+				return t;
 			},
-		});
+		);
 
 		this.logger.log(
 			`Cash collection registered: ${transaction.id} for trip ${trip.id}, amount ${amount} Kz`,
