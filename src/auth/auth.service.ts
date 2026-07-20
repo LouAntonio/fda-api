@@ -12,7 +12,6 @@ import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
 import { ResendService } from '../email/resend.service';
 import { LoggerService } from '../logger/logger.service';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -35,7 +34,6 @@ export class AuthService {
 		private tokenService: TokenService,
 		private resend: ResendService,
 		private logger: LoggerService,
-		private cloudinary: CloudinaryService,
 	) {}
 
 	async register(dto: RegisterDto) {
@@ -436,20 +434,6 @@ export class AuthService {
 		if (dto.phoneNumber !== undefined) data.phoneNumber = dto.phoneNumber;
 
 		if (dto.image !== undefined) {
-			const user = await this.prisma.client.user.findUnique({
-				where: { id: userId },
-				select: { image: true },
-			});
-
-			if (user?.image) {
-				const oldPublicId = this.cloudinary.extractPublicId(user.image);
-				if (oldPublicId) {
-					await this.cloudinary
-						.deleteResource(oldPublicId)
-						.catch(() => {});
-				}
-			}
-
 			data.image = dto.image;
 		}
 

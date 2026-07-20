@@ -29,7 +29,7 @@ export class GoogleAuthService {
 		);
 
 		if (!response.ok) {
-			throw new UnauthorizedException('Invalid Google token');
+			throw new UnauthorizedException('Token Google inválido');
 		}
 
 		return response.json() as Promise<GoogleUser>;
@@ -41,7 +41,7 @@ export class GoogleAuthService {
 		);
 
 		if (!response.ok) {
-			throw new UnauthorizedException('Invalid Google token');
+			throw new UnauthorizedException('Token Google inválido');
 		}
 
 		const data = (await response.json()) as Record<string, string>;

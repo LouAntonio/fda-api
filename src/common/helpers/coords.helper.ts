@@ -3,7 +3,12 @@ export function coordsToWkt(lat: number, lng: number): string {
 }
 
 export function polygonToWkt(coordinates: number[][]): string {
-	const points = coordinates.map(([lng, lat]) => `${lng} ${lat}`).join(', ');
+	const hasClosure =
+		coordinates.length >= 3 &&
+		coordinates[0][0] === coordinates[coordinates.length - 1][0] &&
+		coordinates[0][1] === coordinates[coordinates.length - 1][1];
+	const coords = hasClosure ? coordinates : [...coordinates, coordinates[0]];
+	const points = coords.map(([lng, lat]) => `${lng} ${lat}`).join(', ');
 	return `POLYGON((${points}))`;
 }
 

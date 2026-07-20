@@ -30,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 		});
 
 		if (!user || user.deletedAt) {
-			throw new UnauthorizedException('User not found');
+			throw new UnauthorizedException('Utilizador não encontrado');
 		}
 
 		if (user.status === 'BANNED') {

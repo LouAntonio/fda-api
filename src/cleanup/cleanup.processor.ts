@@ -36,6 +36,7 @@ export class CleanupProcessor extends WorkerHost {
 				status: 'REQUESTED',
 				createdAt: { lte: cutoff },
 				deletedAt: null,
+				cancelledAt: null,
 			},
 			data: {
 				status: 'CANCELLED',
