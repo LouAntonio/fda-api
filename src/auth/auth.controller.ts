@@ -106,7 +106,8 @@ export class AuthController {
 
 	@ApiOperation({
 		summary: 'Verificar token de redefinição',
-		description: 'Valida se o token de redefinição de palavra-passe é válido',
+		description:
+			'Valida se o token de redefinição de palavra-passe é válido',
 	})
 	@Throttle({ default: { limit: 10, ttl: 60000 } })
 	@Post('verify-reset-token')

@@ -53,8 +53,12 @@ export class PriceConfigService {
 				pricePerKm: dto.pricePerKm,
 				pricePerMin: dto.pricePerMin,
 				minFare: dto.minFare,
-				ivaRate: dto.ivaRate ?? (Number(process.env.DEFAULT_IVA_RATE) || 0.14),
-				serviceFeeRate: dto.serviceFeeRate ?? (Number(process.env.DEFAULT_SERVICE_FEE_RATE) || 0.15),
+				ivaRate:
+					dto.ivaRate ??
+					(Number(process.env.DEFAULT_IVA_RATE) || 0.14),
+				serviceFeeRate:
+					dto.serviceFeeRate ??
+					(Number(process.env.DEFAULT_SERVICE_FEE_RATE) || 0.15),
 				isActive: dto.isActive ?? true,
 			},
 			select: defaultPriceConfigSelect,

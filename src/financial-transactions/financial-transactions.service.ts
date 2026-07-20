@@ -427,8 +427,7 @@ export class FinancialTransactionsService {
 						amount,
 						currency: 'AOA',
 						description:
-							dto.notes ??
-							`Recolha de cash - viagem ${trip.id}`,
+							dto.notes ?? `Recolha de cash - viagem ${trip.id}`,
 					},
 					select: defaultTransactionSelect,
 				});

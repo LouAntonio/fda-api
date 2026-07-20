@@ -851,10 +851,7 @@ export class DriversService {
 		});
 	}
 
-	async createBankAccount(
-		driverId: string,
-		dto: CreateBankAccountDto,
-	) {
+	async createBankAccount(driverId: string, dto: CreateBankAccountDto) {
 		if (dto.isDefault) {
 			await this.prisma.client.driverBankAccount.updateMany({
 				where: { driverId },
@@ -895,7 +892,8 @@ export class DriversService {
 		const data: Record<string, unknown> = {};
 		if (dto.bankName !== undefined) data.bankName = dto.bankName;
 		if (dto.iban !== undefined) data.iban = dto.iban;
-		if (dto.accountHolder !== undefined) data.accountHolder = dto.accountHolder;
+		if (dto.accountHolder !== undefined)
+			data.accountHolder = dto.accountHolder;
 
 		if (dto.isDefault) {
 			await this.prisma.client.driverBankAccount.updateMany({

@@ -945,7 +945,8 @@ export class UsersService {
 	) {
 		const data: Record<string, boolean> = {};
 		if (dto.pushEnabled !== undefined) data.pushEnabled = dto.pushEnabled;
-		if (dto.emailEnabled !== undefined) data.emailEnabled = dto.emailEnabled;
+		if (dto.emailEnabled !== undefined)
+			data.emailEnabled = dto.emailEnabled;
 		if (dto.soundsEnabled !== undefined)
 			data.soundsEnabled = dto.soundsEnabled;
 
