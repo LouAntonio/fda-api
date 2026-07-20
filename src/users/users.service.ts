@@ -24,6 +24,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { CreatePushTokenDto } from './dto/create-push-token.dto';
+import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
 
 const defaultUserSelect = {
@@ -919,5 +920,49 @@ export class UsersService {
 		return {
 			msg: 'Token removido com sucesso',
 		};
+	}
+
+	async getNotificationPreferences(userId: string) {
+		let prefs = await this.prisma.client.notificationPreference.findUnique({
+			where: { userId },
+		});
+
+		if (!prefs) {
+			prefs = await this.prisma.client.notificationPreference.create({
+				data: {
+					id: uuidv7(),
+					userId,
+				},
+			});
+		}
+
+		return prefs;
+	}
+
+	async updateNotificationPreferences(
+		userId: string,
+		dto: UpdateNotificationPrefsDto,
+	) {
+		const data: Record<string, boolean> = {};
+		if (dto.pushEnabled !== undefined) data.pushEnabled = dto.pushEnabled;
+		if (dto.emailEnabled !== undefined) data.emailEnabled = dto.emailEnabled;
+		if (dto.soundsEnabled !== undefined)
+			data.soundsEnabled = dto.soundsEnabled;
+
+		if (Object.keys(data).length === 0) {
+			throw new BadRequestException('Nenhum dado para atualizar');
+		}
+
+		const prefs = await this.prisma.client.notificationPreference.upsert({
+			where: { userId },
+			create: {
+				id: uuidv7(),
+				userId,
+				...data,
+			},
+			update: data,
+		});
+
+		return prefs;
 	}
 }

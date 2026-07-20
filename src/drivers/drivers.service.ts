@@ -16,6 +16,10 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
+import {
+	CreateBankAccountDto,
+	UpdateBankAccountDto,
+} from './dto/bank-account.dto';
 import { coordsToWkt } from '../common/helpers/coords.helper';
 
 const defaultDriverSelect = {
@@ -837,6 +841,102 @@ export class DriversService {
 			page,
 			limit,
 			totalPages: Math.ceil(total / limit),
+		};
+	}
+
+	async listBankAccounts(driverId: string) {
+		return this.prisma.client.driverBankAccount.findMany({
+			where: { driverId },
+			orderBy: { createdAt: 'desc' },
+		});
+	}
+
+	async createBankAccount(
+		driverId: string,
+		dto: CreateBankAccountDto,
+	) {
+		if (dto.isDefault) {
+			await this.prisma.client.driverBankAccount.updateMany({
+				where: { driverId },
+				data: { isDefault: false },
+			});
+		}
+
+		const account = await this.prisma.client.driverBankAccount.create({
+			data: {
+				id: uuidv7(),
+				driverId,
+				bankName: dto.bankName,
+				iban: dto.iban,
+				accountHolder: dto.accountHolder,
+				isDefault: dto.isDefault ?? false,
+			},
+		});
+
+		return {
+			msg: 'Conta bancária adicionada com sucesso',
+			data: account,
+		};
+	}
+
+	async updateBankAccount(
+		driverId: string,
+		accountId: string,
+		dto: UpdateBankAccountDto,
+	) {
+		const account = await this.prisma.client.driverBankAccount.findUnique({
+			where: { id: accountId },
+		});
+
+		if (!account || account.driverId !== driverId) {
+			throw new NotFoundException('Conta bancária não encontrada');
+		}
+
+		const data: Record<string, unknown> = {};
+		if (dto.bankName !== undefined) data.bankName = dto.bankName;
+		if (dto.iban !== undefined) data.iban = dto.iban;
+		if (dto.accountHolder !== undefined) data.accountHolder = dto.accountHolder;
+
+		if (dto.isDefault) {
+			await this.prisma.client.driverBankAccount.updateMany({
+				where: { driverId },
+				data: { isDefault: false },
+			});
+			data.isDefault = true;
+		} else if (dto.isDefault === false) {
+			data.isDefault = false;
+		}
+
+		if (Object.keys(data).length === 0) {
+			throw new BadRequestException('Nenhum dado para atualizar');
+		}
+
+		const updated = await this.prisma.client.driverBankAccount.update({
+			where: { id: accountId },
+			data,
+		});
+
+		return {
+			msg: 'Conta bancária atualizada com sucesso',
+			data: updated,
+		};
+	}
+
+	async deleteBankAccount(driverId: string, accountId: string) {
+		const account = await this.prisma.client.driverBankAccount.findUnique({
+			where: { id: accountId },
+		});
+
+		if (!account || account.driverId !== driverId) {
+			throw new NotFoundException('Conta bancária não encontrada');
+		}
+
+		await this.prisma.client.driverBankAccount.delete({
+			where: { id: accountId },
+		});
+
+		return {
+			msg: 'Conta bancária removida com sucesso',
 		};
 	}
 }

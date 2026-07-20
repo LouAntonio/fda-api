@@ -33,9 +33,10 @@ model User {
 	financialTransactions FinancialTransaction[]
 	ownedFleets           Fleet[]
 	pushTokens            PushToken[]
-	reviewsGiven          Review[]               @relation("ReviewsFrom")
-	reviewsRecv           Review[]               @relation("ReviewsTo")
-	sessions              Session[]
+	notificationPreference NotificationPreference?
+	reviewsGiven           Review[]               @relation("ReviewsFrom")
+	reviewsRecv            Review[]               @relation("ReviewsTo")
+	sessions               Session[]
 	tripsAsClient         Trip[]                 @relation("ClientTrips")
 	addresses             UserAddress[]
 	supportTickets        SupportTicket[]
@@ -104,6 +105,19 @@ model PushToken {
 	@@index([userId])
 }
 
+model NotificationPreference {
+	id           String   @id @db.Uuid
+	userId       String   @unique @db.Uuid
+	pushEnabled  Boolean  @default(true)
+	emailEnabled Boolean  @default(false)
+	soundsEnabled Boolean @default(true)
+	createdAt    DateTime @default(now())
+	updatedAt    DateTime @updatedAt
+	user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+	@@index([userId])
+}
+
 model UserAddress {
 	id          String                   @id @db.Uuid
 	userId      String                   @db.Uuid
@@ -168,6 +182,7 @@ model Driver {
 	documents             DriverDocument[]
 	locations             DriverLocation?
 	payouts               DriverPayout[]
+	bankAccounts          DriverBankAccount[]
 	financialTransactions FinancialTransaction[]
 	tripsAsDriver         Trip[]                   @relation("DriverTrips")
 	assignments           TripAssignment[]
@@ -429,6 +444,20 @@ model DriverPayout {
 
 	@@index([driverId])
 	@@index([deletedAt])
+}
+
+model DriverBankAccount {
+	id             String   @id @db.Uuid
+	driverId       String   @db.Uuid
+	bankName       String
+	iban           String
+	accountHolder  String
+	isDefault      Boolean  @default(false)
+	createdAt      DateTime @default(now())
+	updatedAt      DateTime @updatedAt
+	driver         Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+	@@index([driverId])
 }
 
 model Dispute {

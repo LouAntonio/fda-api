@@ -29,6 +29,10 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 import { UpdateDocumentStatusDto } from './dto/update-document-status.dto';
 import { NearestDriversDto } from './dto/nearest-drivers.dto';
 import { RequestPayoutDto } from './dto/request-payout.dto';
+import {
+	CreateBankAccountDto,
+	UpdateBankAccountDto,
+} from './dto/bank-account.dto';
 import { SetActiveVehicleDto } from './dto/set-active-vehicle.dto';
 
 @ApiTags('Drivers')
@@ -304,6 +308,68 @@ export class DriversController {
 		const user = req.user as { id: string };
 		const driver = await this.driversService.findByUserId(user.id);
 		return this.driversService.getEarningsSummary(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Listar contas bancárias',
+		description: 'Lista as contas bancárias do motorista autenticado',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me/bank-accounts')
+	async listMyBankAccounts(@Req() req: Request) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.listBankAccounts(driver.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Criar conta bancária',
+		description: 'Adiciona uma nova conta bancária (IBAN)',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Post('me/bank-accounts')
+	async createBankAccount(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: CreateBankAccountDto,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.createBankAccount(driver.id, dto);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Atualizar conta bancária',
+		description: 'Atualiza uma conta bancária existente',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Patch('me/bank-accounts/:accountId')
+	async updateBankAccount(
+		@Req() req: Request,
+		@Param('accountId') accountId: string,
+		@Body(ValidationPipe) dto: UpdateBankAccountDto,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.updateBankAccount(driver.id, accountId, dto);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Remover conta bancária',
+		description: 'Remove uma conta bancária',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Delete('me/bank-accounts/:accountId')
+	async deleteBankAccount(
+		@Req() req: Request,
+		@Param('accountId') accountId: string,
+	) {
+		const user = req.user as { id: string };
+		const driver = await this.driversService.findByUserId(user.id);
+		return this.driversService.deleteBankAccount(driver.id, accountId);
 	}
 
 	@ApiBearerAuth()

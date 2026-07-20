@@ -32,6 +32,7 @@ import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import { CreatePushTokenDto } from './dto/create-push-token.dto';
+import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -339,6 +340,35 @@ export class UsersController {
 	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	listPushTokens(@Param('id') id: string) {
 		return this.usersService.listPushTokens(id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Obter preferências de notificação',
+		description:
+			'Retorna as preferências de notificação do próprio utilizador',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Get('me/notification-preferences')
+	getNotificationPreferences(@Req() req: Request) {
+		const user = req.user as { id: string };
+		return this.usersService.getNotificationPreferences(user.id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
+		summary: 'Atualizar preferências de notificação',
+		description:
+			'Atualiza as preferências de notificação do próprio utilizador',
+	})
+	@UseGuards(JwtAuthGuard)
+	@Patch('me/notification-preferences')
+	updateNotificationPreferences(
+		@Req() req: Request,
+		@Body(ValidationPipe) dto: UpdateNotificationPrefsDto,
+	) {
+		const user = req.user as { id: string };
+		return this.usersService.updateNotificationPreferences(user.id, dto);
 	}
 
 	@ApiBearerAuth()
