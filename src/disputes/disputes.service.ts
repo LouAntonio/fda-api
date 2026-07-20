@@ -166,13 +166,22 @@ export class DisputesService {
 			throw new BadRequestException('Disputa já se encontra resolvida');
 		}
 
-		const updated = await this.prisma.client.dispute.update({
-			where: { id },
-			data: {
-				resolution: dto.resolution,
-				resolvedAt: new Date(),
-			},
-			select: defaultDisputeSelect,
+		const updated = await this.prisma.client.$transaction(async (tx) => {
+			const d = await tx.dispute.update({
+				where: { id },
+				data: {
+					resolution: dto.resolution,
+					resolvedAt: new Date(),
+				},
+				select: { ...defaultDisputeSelect, tripId: true },
+			});
+
+			await tx.trip.update({
+				where: { id: d.tripId },
+				data: { status: 'NEEDS_REVIEW' },
+			});
+
+			return d;
 		});
 
 		this.logger.log(

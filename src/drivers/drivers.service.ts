@@ -52,43 +52,43 @@ export class DriversService {
 	) {}
 
 	async create(dto: CreateDriverDto) {
-		const user = await this.prisma.client.user.findUnique({
-			where: { id: dto.userId },
-		});
-
-		if (!user || user.deletedAt) {
-			throw new NotFoundException('Utilizador não encontrado');
-		}
-
-		const existingDriver = await this.prisma.client.driver.findUnique({
-			where: { userId: dto.userId },
-		});
-
-		if (existingDriver) {
-			throw new ConflictException(
-				'Este utilizador já possui um perfil de motorista',
-			);
-		}
-
-		const existingBi = await this.prisma.client.driver.findUnique({
-			where: { biNumber: dto.biNumber },
-		});
-
-		if (existingBi) {
-			throw new ConflictException('Este BI já está registado');
-		}
-
-		const existingLicense = await this.prisma.client.driver.findUnique({
-			where: { licenseNumber: dto.licenseNumber },
-		});
-
-		if (existingLicense) {
-			throw new ConflictException(
-				'Esta carta de condução já está registada',
-			);
-		}
-
 		const driver = await this.prisma.client.$transaction(async (tx) => {
+			const user = await tx.user.findUnique({
+				where: { id: dto.userId },
+			});
+
+			if (!user || user.deletedAt) {
+				throw new NotFoundException('Utilizador não encontrado');
+			}
+
+			const existingDriver = await tx.driver.findUnique({
+				where: { userId: dto.userId },
+			});
+
+			if (existingDriver) {
+				throw new ConflictException(
+					'Este utilizador já possui um perfil de motorista',
+				);
+			}
+
+			const existingBi = await tx.driver.findUnique({
+				where: { biNumber: dto.biNumber },
+			});
+
+			if (existingBi) {
+				throw new ConflictException('Este BI já está registado');
+			}
+
+			const existingLicense = await tx.driver.findUnique({
+				where: { licenseNumber: dto.licenseNumber },
+			});
+
+			if (existingLicense) {
+				throw new ConflictException(
+					'Esta carta de condução já está registada',
+				);
+			}
+
 			const d = await tx.driver.create({
 				data: {
 					id: uuidv7(),

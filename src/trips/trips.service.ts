@@ -72,6 +72,7 @@ const validTransitions: Record<TripStatus, TripStatus[]> = {
 	[TripStatus.STARTED]: [TripStatus.COMPLETED, TripStatus.CANCELLED],
 	[TripStatus.COMPLETED]: [],
 	[TripStatus.CANCELLED]: [],
+	[TripStatus.NEEDS_REVIEW]: [TripStatus.CANCELLED, TripStatus.REQUESTED],
 };
 
 const statusEventMap: Record<TripStatus, TripEventType> = {
@@ -81,6 +82,7 @@ const statusEventMap: Record<TripStatus, TripEventType> = {
 	[TripStatus.STARTED]: TripEventType.TRIP_STARTED,
 	[TripStatus.COMPLETED]: TripEventType.TRIP_COMPLETED,
 	[TripStatus.CANCELLED]: TripEventType.TRIP_CANCELLED,
+	[TripStatus.NEEDS_REVIEW]: TripEventType.TRIP_NEEDS_REVIEW,
 };
 
 const deliveryStatusTransitions: Record<DeliveryStatus, DeliveryStatus[]> = {
@@ -97,6 +99,7 @@ const statusTimestampField: Record<TripStatus, string> = {
 	[TripStatus.STARTED]: 'startedAt',
 	[TripStatus.COMPLETED]: 'completedAt',
 	[TripStatus.CANCELLED]: 'cancelledAt',
+	[TripStatus.NEEDS_REVIEW]: 'updatedAt',
 };
 
 interface ZoneResult {

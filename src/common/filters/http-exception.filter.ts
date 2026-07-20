@@ -27,15 +27,19 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				? exception.message
 				: 'Erro interno do servidor';
 
+		const body = status >= 400 && status < 500 && request.body
+			? ` — Body: ${JSON.stringify(request.body)}`
+			: '';
+
 		if (status >= 500) {
 			this.logger.error(
-				`${request.method} ${request.originalUrl} ${status} — ${message}`,
+				`${request.method} ${request.originalUrl} ${status} — ${message}${body}`,
 				exception instanceof Error ? exception.stack : undefined,
 				'HttpExceptionFilter',
 			);
 		} else {
 			this.logger.warn(
-				`${request.method} ${request.originalUrl} ${status} — ${message}`,
+				`${request.method} ${request.originalUrl} ${status} — ${message}${body}`,
 				'HttpExceptionFilter',
 			);
 		}

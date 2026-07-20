@@ -580,6 +580,7 @@ enum TripStatus {
 	STARTED
 	COMPLETED
 	CANCELLED
+	NEEDS_REVIEW
 }
 
 enum DeliveryStatus {
@@ -670,6 +671,7 @@ enum TripEventType {
 	ARRIVED_DROPOFF
 	TRIP_COMPLETED
 	TRIP_CANCELLED
+	TRIP_NEEDS_REVIEW
 }
 
 enum SupportTicketStatus {
