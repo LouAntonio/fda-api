@@ -468,9 +468,10 @@ export class AuthService {
 	}
 
 	async forgotPassword(dto: ForgotPasswordDto) {
-		const user = await this.prisma.client.user.findUnique({
-			where: { email: dto.email },
-		});
+		const where = dto.email
+			? { email: dto.email }
+			: { phoneNumber: dto.phoneNumber };
+		const user = await this.prisma.client.user.findUnique({ where });
 
 		if (user) {
 			const rawToken = uuidv7();
@@ -487,23 +488,48 @@ export class AuthService {
 
 			const resetLink = `${process.env.FRONTEND_URL ?? 'http://localhost:5173'}/resetar-senha?token=${rawToken}`;
 
-			await this.resend
-				.sendPasswordResetEmail(
-					user.email ?? '',
-					user.name ?? undefined,
-					resetLink,
-				)
-				.catch((err: unknown) =>
-					this.logger.error(
-						'Failed to send password reset email',
-						err as string | undefined,
-						'AuthService',
-					),
-				);
+			if (user.email) {
+				await this.resend
+					.sendPasswordResetEmail(
+						user.email,
+						user.name ?? undefined,
+						resetLink,
+					)
+					.catch((err: unknown) =>
+						this.logger.error(
+							'Failed to send password reset email',
+							err as string | undefined,
+							'AuthService',
+						),
+					);
+			}
 		}
 
 		return {
 			msg: 'Se o email existir, você receberá um link de recuperação',
+		};
+	}
+
+	async verifyResetToken(token: string) {
+		const verification = await this.prisma.client.verification.findUnique({
+			where: {
+				identifier_value: {
+					identifier: 'password_reset',
+					value: this.hashToken(token),
+				},
+				expiresAt: { gte: new Date() },
+			},
+		});
+
+		if (!verification || !verification.userId) {
+			throw new BadRequestException(
+				'Token de recuperação inválido ou expirado',
+			);
+		}
+
+		return {
+			msg: 'Token válido',
+			userId: verification.userId,
 		};
 	}
 

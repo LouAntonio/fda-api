@@ -42,7 +42,8 @@ export class ReviewsController {
 		summary: 'Listar avaliações',
 		description: 'Lista avaliações com paginação e filtros',
 	})
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
 	@Get()
 	list(@Query(ValidationPipe) dto: ListReviewsDto) {
 		return this.reviewsService.list(dto);

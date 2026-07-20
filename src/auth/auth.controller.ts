@@ -105,6 +105,16 @@ export class AuthController {
 	}
 
 	@ApiOperation({
+		summary: 'Verificar token de redefinição',
+		description: 'Valida se o token de redefinição de palavra-passe é válido',
+	})
+	@Throttle({ default: { limit: 10, ttl: 60000 } })
+	@Post('verify-reset-token')
+	verifyResetToken(@Body('token') token: string) {
+		return this.authService.verifyResetToken(token);
+	}
+
+	@ApiOperation({
 		summary: 'Redefinir palavra-passe',
 		description: 'Redefine a palavra-passe com o token recebido',
 	})
