@@ -277,6 +277,8 @@ export class TripsService {
 					pickupLat,
 					pickupLng,
 					vehicleType: dto.vehicleType,
+					attempt: 1,
+					excludedDriverIds: [],
 				})
 				.catch((err: unknown) =>
 					this.logger.error(

@@ -365,8 +365,8 @@ export class DriversService {
 			: `INNER JOIN "Vehicle" v ON v."driverId" = d.id AND v.status = 'ACTIVE' AND v."deletedAt" IS NULL`;
 
 		const queryParams: unknown[] = [
-			params.lat,
 			params.lng,
+			params.lat,
 			radiusKm,
 			vehicleType ?? '',
 		];
@@ -383,10 +383,10 @@ export class DriversService {
 				d."ratingCount",
 				d."completedTripsCount",
 				d."availableBalance",
-				ST_X(dl.location::geometry) AS lat,
-				ST_Y(dl.location::geometry) AS lng,
+				ST_X(ST_SetSRID(dl.location::geometry, 4326)) AS lat,
+				ST_Y(ST_SetSRID(dl.location::geometry, 4326)) AS lng,
 				ST_Distance(
-					dl.location::geometry,
+					ST_SetSRID(dl.location::geometry, 4326),
 					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry
 				) / 1000 AS distance_km,
 				json_build_object(
@@ -413,7 +413,7 @@ export class DriversService {
 				AND d."complianceStatus" = 'APPROVED'
 				AND d.availability = 'ONLINE'
 				AND ST_DWithin(
-					dl.location::geometry,
+					ST_SetSRID(dl.location::geometry, 4326),
 					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry,
 					$3 * 1000
 				)

@@ -60,6 +60,53 @@ export class DispatchProcessor extends WorkerHost {
 			`Dispatch attempt ${currentAttempt}/${MAX_DISPATCH_ATTEMPTS} for trip ${tripId}`,
 		);
 
+		try {
+			await this.handleOfferTripInner(
+				job,
+				tripId,
+				clientId,
+				pickupLat,
+				pickupLng,
+				vehicleType,
+				excludedDriverIds ?? [],
+				currentAttempt,
+			);
+		} catch (error) {
+			this.logger.error(
+				`Dispatch error for trip ${tripId}: ${error instanceof Error ? error.message : String(error)}`,
+				error instanceof Error ? error.stack : undefined,
+			);
+
+			if (currentAttempt < MAX_DISPATCH_ATTEMPTS) {
+				await this.dispatchService.enqueueOfferTrip({
+					...job.data,
+					attempt: currentAttempt + 1,
+				});
+			} else {
+				this.tripGateway.sendToUser(clientId, 'trip:no_drivers', {
+					tripId,
+					message:
+						'Nenhum motorista disponível no momento. Tente novamente mais tarde.',
+				});
+				await this.expoPush.sendToUser(clientId, {
+					title: 'Sem motoristas disponíveis',
+					body: 'Não encontramos motoristas perto de si. Tente novamente mais tarde.',
+					data: { type: 'no_drivers', tripId },
+				});
+			}
+		}
+	}
+
+	private async handleOfferTripInner(
+		job: Job<OfferTripJobData>,
+		tripId: string,
+		clientId: string,
+		pickupLat: number,
+		pickupLng: number,
+		vehicleType: string | undefined,
+		excludedDriverIds: string[],
+		currentAttempt: number,
+	) {
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: tripId },
 			select: {
@@ -80,7 +127,7 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
-		const sqlParams: unknown[] = [pickupLat, pickupLng];
+		const sqlParams: unknown[] = [pickupLng, pickupLat];
 		let paramIdx = 3;
 
 		const validVehicleTypes = ['MOTO', 'CARRO'];
@@ -125,10 +172,10 @@ export class DispatchProcessor extends WorkerHost {
 				d.id,
 				d."userId",
 				u.name,
-				ST_X(dl.location::geometry) AS lat,
-				ST_Y(dl.location::geometry) AS lng,
+				ST_X(ST_SetSRID(dl.location::geometry, 4326)) AS lat,
+				ST_Y(ST_SetSRID(dl.location::geometry, 4326)) AS lng,
 				ST_Distance(
-					dl.location::geometry,
+					ST_SetSRID(dl.location::geometry, 4326),
 					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry
 				) / 1000 AS distance_km,
 				json_build_object(
@@ -149,8 +196,9 @@ export class DispatchProcessor extends WorkerHost {
 				AND d.availability = 'ONLINE'
 				${vehicleTypeClause}
 				${excludedClause}
+				AND ST_IsValid(ST_SetSRID(dl.location::geometry, 4326))
 				AND ST_DWithin(
-					dl.location::geometry,
+					ST_SetSRID(dl.location::geometry, 4326),
 					ST_SetSRID(ST_MakePoint($1, $2), 4326)::geometry,
 					10000
 				)
@@ -163,7 +211,7 @@ export class DispatchProcessor extends WorkerHost {
 		if (nearestDrivers.length === 0) {
 			if (currentAttempt < MAX_DISPATCH_ATTEMPTS) {
 				this.logger.log(
-					`No drivers found for trip ${tripId}, retrying in 15s (attempt ${currentAttempt}/${MAX_DISPATCH_ATTEMPTS})`,
+					`No drivers found for trip ${tripId}, retrying (attempt ${currentAttempt}/${MAX_DISPATCH_ATTEMPTS})`,
 				);
 				await this.dispatchService.enqueueOfferTrip({
 					...job.data,
@@ -206,7 +254,7 @@ export class DispatchProcessor extends WorkerHost {
 			await this.dispatchService.enqueueOfferTrip({
 				...job.data,
 				excludedDriverIds: [...(excludedDriverIds ?? []), nearest.id],
-				attempt: currentAttempt,
+				attempt: currentAttempt + 1,
 			});
 			return;
 		}
@@ -347,7 +395,12 @@ export class DispatchProcessor extends WorkerHost {
 		const coordsMatch = trip.pickupCoords.match(
 			/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
 		);
-		if (!coordsMatch) return;
+		if (!coordsMatch) {
+			this.logger.error(
+				`Failed to parse pickupCoords for trip ${tripId}: ${trip.pickupCoords}`,
+			);
+			return;
+		}
 
 		const pickupLng = parseFloat(coordsMatch[1]);
 		const pickupLat = parseFloat(coordsMatch[2]);
@@ -358,6 +411,7 @@ export class DispatchProcessor extends WorkerHost {
 			pickupLat,
 			pickupLng,
 			excludedDriverIds: [driverId],
+			attempt: (job.data as DispatchTimeoutJobData & { attempt?: number }).attempt ?? 1,
 		});
 	}
 }
