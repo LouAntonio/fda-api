@@ -34,7 +34,7 @@ export class DispatchService {
 	) {}
 
 	async enqueueOfferTrip(data: OfferTripJobData) {
-		const jobId = `offer-trip:${data.tripId}:${data.attempt ?? 1}`;
+		const jobId = `offer-trip-${data.tripId}-${data.attempt ?? 1}`;
 		await this.dispatchQueue.add('offer-trip', data, {
 			jobId,
 			removeOnComplete: true,
@@ -44,7 +44,7 @@ export class DispatchService {
 	}
 
 	async enqueueDispatchTimeout(data: DispatchTimeoutJobData) {
-		const jobId = `dispatch-timeout:${data.assignmentId}`;
+		const jobId = `dispatch-timeout-${data.assignmentId}`;
 		await this.dispatchQueue.add('dispatch-timeout', data, {
 			jobId,
 			delay: DISPATCH_TIMEOUT_MS,
