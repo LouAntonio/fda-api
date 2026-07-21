@@ -682,7 +682,8 @@ export class TripsService {
 
 		if (nextStatus === TripStatus.COMPLETED && trip.driverId) {
 			let actualDurationMin = trip.estimatedDurationMin ?? 1;
-			let actualDistanceKm: number | null | undefined = trip.estimatedDistanceKm;
+			let actualDistanceKm: number | null | undefined =
+				trip.estimatedDistanceKm;
 			let actualPickupCoords: string | undefined;
 			let actualDropoffCoords: string | undefined;
 			try {
@@ -697,13 +698,12 @@ export class TripsService {
 						)
 					: (trip.estimatedDurationMin ?? 1);
 
-				const points = await this.prisma.client.tripLocationPoint.findMany(
-					{
+				const points =
+					await this.prisma.client.tripLocationPoint.findMany({
 						where: { tripId: id },
 						orderBy: { recordedAt: 'asc' },
 						select: { location: true },
-					},
-				);
+					});
 
 				actualDistanceKm = trip.estimatedDistanceKm;
 				if (points.length >= 2) {
@@ -729,11 +729,10 @@ export class TripsService {
 					}
 				}
 
-				const priceConfig = await this.prisma.client.priceConfig.findUnique(
-					{
+				const priceConfig =
+					await this.prisma.client.priceConfig.findUnique({
 						where: { id: trip.priceConfigId ?? undefined },
-					},
-				);
+					});
 
 				actualPickupCoords =
 					points.length >= 1 ? points[0].location : undefined;
@@ -752,12 +751,17 @@ export class TripsService {
 				if (priceConfig) {
 					let subtotal =
 						Number(priceConfig.baseFare) +
-						Number(priceConfig.pricePerKm) * Number(actualDistanceKm) +
+						Number(priceConfig.pricePerKm) *
+							Number(actualDistanceKm) +
 						Number(priceConfig.pricePerMin) * actualDurationMin;
 
 					subtotal = Math.max(Number(priceConfig.minFare), subtotal);
-					subtotal = subtotal * Number(trip.surgeMultiplierApplied ?? 1);
-					subtotal = Math.max(0, subtotal - Number(trip.discountAmount ?? 0));
+					subtotal =
+						subtotal * Number(trip.surgeMultiplierApplied ?? 1);
+					subtotal = Math.max(
+						0,
+						subtotal - Number(trip.discountAmount ?? 0),
+					);
 
 					const ivaAmount = subtotal * priceConfig.ivaRate;
 					const serviceFee = subtotal * priceConfig.serviceFeeRate;
@@ -821,20 +825,24 @@ export class TripsService {
 					`Failed to process completion for trip ${id}`,
 					err instanceof Error ? err.message : String(err),
 				);
-				await this.prisma.client.trip.update({
-					where: { id },
-					data: {
-						actualDistanceKm,
-						actualDurationMin,
-						actualPickupCoords,
-						actualDropoffCoords,
-					},
-				}).catch((innerErr: unknown) =>
-					this.logger.error(
-						`Failed to save actual coords for trip ${id}`,
-						innerErr instanceof Error ? innerErr.message : String(innerErr),
-					),
-				);
+				await this.prisma.client.trip
+					.update({
+						where: { id },
+						data: {
+							actualDistanceKm,
+							actualDurationMin,
+							actualPickupCoords,
+							actualDropoffCoords,
+						},
+					})
+					.catch((innerErr: unknown) =>
+						this.logger.error(
+							`Failed to save actual coords for trip ${id}`,
+							innerErr instanceof Error
+								? innerErr.message
+								: String(innerErr),
+						),
+					);
 				await this.prisma.client.driver.update({
 					where: { id: trip.driverId },
 					data: {

@@ -411,7 +411,9 @@ export class DispatchProcessor extends WorkerHost {
 			pickupLat,
 			pickupLng,
 			excludedDriverIds: [driverId],
-			attempt: (job.data as DispatchTimeoutJobData & { attempt?: number }).attempt ?? 1,
+			attempt:
+				(job.data as DispatchTimeoutJobData & { attempt?: number })
+					.attempt ?? 1,
 		});
 	}
 }
