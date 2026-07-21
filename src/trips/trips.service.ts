@@ -43,6 +43,8 @@ const defaultTripSelect = {
 	estimatedDurationMin: true,
 	actualDistanceKm: true,
 	actualDurationMin: true,
+	actualPickupCoords: true,
+	actualDropoffCoords: true,
 	surgeMultiplierApplied: true,
 	subtotal: true,
 	ivaAmount: true,
@@ -559,6 +561,18 @@ export class TripsService {
 			data.actualDistanceKm = dto.actualDistanceKm;
 		if (dto.actualDurationMin !== undefined)
 			data.actualDurationMin = dto.actualDurationMin;
+		if (dto.actualPickupCoords) {
+			data.actualPickupCoords = coordsToWkt(
+				dto.actualPickupCoords.lat,
+				dto.actualPickupCoords.lng,
+			);
+		}
+		if (dto.actualDropoffCoords) {
+			data.actualDropoffCoords = coordsToWkt(
+				dto.actualDropoffCoords.lat,
+				dto.actualDropoffCoords.lng,
+			);
+		}
 		if (dto.requestLocation) {
 			data.requestLocation = coordsToWkt(
 				dto.requestLocation.lat,
@@ -667,8 +681,12 @@ export class TripsService {
 		});
 
 		if (nextStatus === TripStatus.COMPLETED && trip.driverId) {
+			let actualDurationMin = trip.estimatedDurationMin ?? 1;
+			let actualDistanceKm: number | null | undefined = trip.estimatedDistanceKm;
+			let actualPickupCoords: string | undefined;
+			let actualDropoffCoords: string | undefined;
 			try {
-				const actualDurationMin = trip.startedAt
+				actualDurationMin = trip.startedAt
 					? Math.max(
 							1,
 							Math.round(
@@ -687,7 +705,7 @@ export class TripsService {
 					},
 				);
 
-				let actualDistanceKm = trip.estimatedDistanceKm;
+				actualDistanceKm = trip.estimatedDistanceKm;
 				if (points.length >= 2) {
 					let total = 0;
 					for (let i = 1; i < points.length; i++) {
@@ -717,6 +735,20 @@ export class TripsService {
 					},
 				);
 
+				actualPickupCoords =
+					points.length >= 1 ? points[0].location : undefined;
+				actualDropoffCoords =
+					points.length >= 1
+						? points[points.length - 1].location
+						: undefined;
+
+				const baseTripUpdate: Prisma.TripUpdateInput = {
+					actualDistanceKm,
+					actualDurationMin,
+					actualPickupCoords,
+					actualDropoffCoords,
+				};
+
 				if (priceConfig) {
 					let subtotal =
 						Number(priceConfig.baseFare) +
@@ -732,18 +764,18 @@ export class TripsService {
 					const driverEarnings = subtotal - serviceFee;
 					const totalPrice = subtotal + ivaAmount;
 
+					Object.assign(baseTripUpdate, {
+						subtotal: round(subtotal, 2),
+						ivaAmount: round(ivaAmount, 2),
+						serviceFee: round(serviceFee, 2),
+						driverEarnings: round(driverEarnings, 2),
+						totalPrice: round(totalPrice, 2),
+						paymentStatus: 'PAID',
+					});
+
 					await this.prisma.client.trip.update({
 						where: { id },
-						data: {
-							actualDistanceKm,
-							actualDurationMin,
-							subtotal: round(subtotal, 2),
-							ivaAmount: round(ivaAmount, 2),
-							serviceFee: round(serviceFee, 2),
-							driverEarnings: round(driverEarnings, 2),
-							totalPrice: round(totalPrice, 2),
-							paymentStatus: 'PAID',
-						},
+						data: baseTripUpdate,
 					});
 
 					await this.prisma.client.financialTransaction.create({
@@ -769,6 +801,11 @@ export class TripsService {
 						},
 					});
 				} else {
+					await this.prisma.client.trip.update({
+						where: { id },
+						data: baseTripUpdate,
+					});
+
 					await this.prisma.client.driver.update({
 						where: { id: trip.driverId },
 						data: {
@@ -783,6 +820,20 @@ export class TripsService {
 				this.logger.error(
 					`Failed to process completion for trip ${id}`,
 					err instanceof Error ? err.message : String(err),
+				);
+				await this.prisma.client.trip.update({
+					where: { id },
+					data: {
+						actualDistanceKm,
+						actualDurationMin,
+						actualPickupCoords,
+						actualDropoffCoords,
+					},
+				}).catch((innerErr: unknown) =>
+					this.logger.error(
+						`Failed to save actual coords for trip ${id}`,
+						innerErr instanceof Error ? innerErr.message : String(innerErr),
+					),
 				);
 				await this.prisma.client.driver.update({
 					where: { id: trip.driverId },

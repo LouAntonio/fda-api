@@ -65,6 +65,26 @@ export class UpdateTripDto {
 	actualDurationMin?: number;
 
 	@ApiPropertyOptional({
+		description: 'Coordenadas reais de recolha (preenchidas na conclusão)',
+		type: CoordsDto,
+	})
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CoordsDto)
+	@IsObject()
+	actualPickupCoords?: CoordsDto;
+
+	@ApiPropertyOptional({
+		description: 'Coordenadas reais de destino (preenchidas na conclusão)',
+		type: CoordsDto,
+	})
+	@IsOptional()
+	@ValidateNested()
+	@Type(() => CoordsDto)
+	@IsObject()
+	actualDropoffCoords?: CoordsDto;
+
+	@ApiPropertyOptional({
 		description: 'Coordenadas de onde o pedido foi feito',
 		type: CoordsDto,
 	})
