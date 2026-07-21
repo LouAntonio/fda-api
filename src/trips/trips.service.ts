@@ -41,6 +41,8 @@ const defaultTripSelect = {
 	dropoffAddress: true,
 	estimatedDistanceKm: true,
 	estimatedDurationMin: true,
+	actualDistanceKm: true,
+	actualDurationMin: true,
 	surgeMultiplierApplied: true,
 	subtotal: true,
 	ivaAmount: true,
@@ -665,15 +667,133 @@ export class TripsService {
 		});
 
 		if (nextStatus === TripStatus.COMPLETED && trip.driverId) {
-			await this.prisma.client.driver.update({
-				where: { id: trip.driverId },
-				data: {
-					completedTripsCount: { increment: 1 },
-					availableBalance: {
-						increment: Number(trip.driverEarnings ?? 0),
+			try {
+				const actualDurationMin = trip.startedAt
+					? Math.max(
+							1,
+							Math.round(
+								(new Date().getTime() -
+									new Date(trip.startedAt).getTime()) /
+									60000,
+							),
+						)
+					: (trip.estimatedDurationMin ?? 1);
+
+				const points = await this.prisma.client.tripLocationPoint.findMany(
+					{
+						where: { tripId: id },
+						orderBy: { recordedAt: 'asc' },
+						select: { location: true },
 					},
-				},
-			});
+				);
+
+				let actualDistanceKm = trip.estimatedDistanceKm;
+				if (points.length >= 2) {
+					let total = 0;
+					for (let i = 1; i < points.length; i++) {
+						const prev = points[i - 1].location.match(
+							/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
+						);
+						const curr = points[i].location.match(
+							/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
+						);
+						if (prev && curr) {
+							total += distanceInKm(
+								parseFloat(prev[2]),
+								parseFloat(prev[1]),
+								parseFloat(curr[2]),
+								parseFloat(curr[1]),
+							);
+						}
+					}
+					if (total > 0) {
+						actualDistanceKm = round(total, 2);
+					}
+				}
+
+				const priceConfig = await this.prisma.client.priceConfig.findUnique(
+					{
+						where: { id: trip.priceConfigId ?? undefined },
+					},
+				);
+
+				if (priceConfig) {
+					let subtotal =
+						Number(priceConfig.baseFare) +
+						Number(priceConfig.pricePerKm) * Number(actualDistanceKm) +
+						Number(priceConfig.pricePerMin) * actualDurationMin;
+
+					subtotal = Math.max(Number(priceConfig.minFare), subtotal);
+					subtotal = subtotal * Number(trip.surgeMultiplierApplied ?? 1);
+					subtotal = Math.max(0, subtotal - Number(trip.discountAmount ?? 0));
+
+					const ivaAmount = subtotal * priceConfig.ivaRate;
+					const serviceFee = subtotal * priceConfig.serviceFeeRate;
+					const driverEarnings = subtotal - serviceFee;
+					const totalPrice = subtotal + ivaAmount;
+
+					await this.prisma.client.trip.update({
+						where: { id },
+						data: {
+							actualDistanceKm,
+							actualDurationMin,
+							subtotal: round(subtotal, 2),
+							ivaAmount: round(ivaAmount, 2),
+							serviceFee: round(serviceFee, 2),
+							driverEarnings: round(driverEarnings, 2),
+							totalPrice: round(totalPrice, 2),
+							paymentStatus: 'PAID',
+						},
+					});
+
+					await this.prisma.client.financialTransaction.create({
+						data: {
+							id: uuidv7(),
+							tripId: id,
+							userId: trip.clientId,
+							driverId: trip.driverId,
+							type: 'TRIP_PAYMENT',
+							status: 'COMPLETED',
+							amount: round(totalPrice, 2),
+							currency: 'AOA',
+						},
+					});
+
+					await this.prisma.client.driver.update({
+						where: { id: trip.driverId },
+						data: {
+							completedTripsCount: { increment: 1 },
+							availableBalance: {
+								increment: round(driverEarnings, 2),
+							},
+						},
+					});
+				} else {
+					await this.prisma.client.driver.update({
+						where: { id: trip.driverId },
+						data: {
+							completedTripsCount: { increment: 1 },
+							availableBalance: {
+								increment: Number(trip.driverEarnings ?? 0),
+							},
+						},
+					});
+				}
+			} catch (err: unknown) {
+				this.logger.error(
+					`Failed to process completion for trip ${id}`,
+					err instanceof Error ? err.message : String(err),
+				);
+				await this.prisma.client.driver.update({
+					where: { id: trip.driverId },
+					data: {
+						completedTripsCount: { increment: 1 },
+						availableBalance: {
+							increment: Number(trip.driverEarnings ?? 0),
+						},
+					},
+				});
+			}
 		}
 
 		if (nextStatus === TripStatus.CANCELLED && trip.driverId) {
