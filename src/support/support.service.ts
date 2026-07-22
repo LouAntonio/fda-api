@@ -74,6 +74,29 @@ export class SupportService {
 		};
 	}
 
+	async findOne(id: string) {
+		const ticket = await this.prisma.client.supportTicket.findUnique({
+			where: { id },
+			include: {
+				user: {
+					select: {
+						id: true,
+						name: true,
+						surname: true,
+						phoneNumber: true,
+						email: true,
+					},
+				},
+			},
+		});
+
+		if (!ticket) {
+			throw new NotFoundException('Ticket de suporte não encontrado');
+		}
+
+		return { data: ticket };
+	}
+
 	async update(id: string, dto: UpdateSupportTicketDto) {
 		const ticket = await this.prisma.client.supportTicket.findUnique({
 			where: { id },

@@ -605,7 +605,7 @@ export class UsersService {
 		});
 
 		this.logger.log(
-			`Phone verification code for user ${userId}: ${code}`,
+			`Phone verification code created for user ${userId}`,
 			'UsersService',
 		);
 

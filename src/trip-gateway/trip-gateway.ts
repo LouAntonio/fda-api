@@ -122,9 +122,23 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	}
 
 	@SubscribeMessage('join:trip')
-	handleJoinTrip(client: AuthenticatedSocket, tripId: string) {
+	async handleJoinTrip(client: AuthenticatedSocket, tripId: string) {
 		if (!client.user) {
 			client.emit('error', { message: 'Autenticação necessária' });
+			return;
+		}
+		const trip = await this.prisma.client.trip.findUnique({
+			where: { id: tripId },
+			select: { clientId: true, driverId: true },
+		});
+		const userId = client.user.sub;
+		if (
+			!trip ||
+			(trip.clientId !== userId && trip.driverId !== userId)
+		) {
+			client.emit('error', {
+				message: 'Não tem permissão para subscrever esta viagem',
+			});
 			return;
 		}
 		const room = `trip:${tripId}`;

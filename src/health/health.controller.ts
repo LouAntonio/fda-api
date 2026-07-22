@@ -3,6 +3,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { performance } from 'perf_hooks';
 import * as pkg from '../../package.json';
 
@@ -30,7 +33,8 @@ export class HealthController {
 	) {}
 
 	@ApiBearerAuth()
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS)
 	@Get()
 	@ApiOperation({
 		summary: 'Health check completo (autenticado)',

@@ -417,6 +417,21 @@ export class FinancialTransactionsService {
 
 		const transaction = await this.prisma.client.$transaction(
 			async (tx) => {
+				const [lockedTrip] = await tx.$queryRawUnsafe<
+					{ id: string; paymentStatus: string }[]
+				>(
+					`SELECT id, "paymentStatus" FROM "Trip" WHERE id = $1 FOR UPDATE`,
+					trip.id,
+				);
+				if (
+					!lockedTrip ||
+					lockedTrip.paymentStatus === PaymentStatus.PAID
+				) {
+					throw new BadRequestException(
+						'Esta viagem já foi paga',
+					);
+				}
+
 				const t = await tx.financialTransaction.create({
 					data: {
 						id: uuidv7(),

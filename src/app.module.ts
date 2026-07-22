@@ -21,6 +21,7 @@ import { TripGatewayModule } from './trip-gateway/trip-gateway.module';
 import { TripAssignmentsModule } from './trip-assignments/trip-assignments.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { CleanupModule } from './cleanup/cleanup.module';
+import { PayoutModule } from './payout/payout.module';
 import { DeliveryDetailsModule } from './delivery-details/delivery-details.module';
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
@@ -75,6 +76,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		SupportModule,
 		AdminModule,
 		CleanupModule,
+		PayoutModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [

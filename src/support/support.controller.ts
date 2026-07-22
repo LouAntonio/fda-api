@@ -56,6 +56,18 @@ export class SupportController {
 
 	@ApiBearerAuth()
 	@ApiOperation({
+		summary: 'Obter ticket de suporte (admin)',
+		description: 'Retorna um ticket específico pelo ID',
+	})
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.SUPPORT)
+	@Get(':id')
+	findOne(@Param('id') id: string) {
+		return this.supportService.findOne(id);
+	}
+
+	@ApiBearerAuth()
+	@ApiOperation({
 		summary: 'Atualizar ticket de suporte (admin)',
 		description:
 			'Altera o status de um ticket (OPEN → IN_PROGRESS → RESOLVED)',
