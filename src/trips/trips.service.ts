@@ -66,6 +66,23 @@ const defaultTripSelect = {
 	deletedAt: true,
 } as const;
 
+const tripCreateSelect = {
+	...defaultTripSelect,
+	client: {
+		select: {
+			id: true,
+			name: true,
+			surname: true,
+			phoneNumber: true,
+		},
+	},
+	deliveryDetails: true,
+} as const;
+
+type TripCreatePayload = Prisma.TripGetPayload<{
+	select: typeof tripCreateSelect;
+}>;
+
 const validTransitions: Record<TripStatus, TripStatus[]> = {
 	[TripStatus.REQUESTED]: [TripStatus.ACCEPTED, TripStatus.CANCELLED],
 	[TripStatus.ACCEPTED]: [
@@ -129,6 +146,12 @@ export class TripsService {
 			clientId = dto['clientId'] as string;
 		}
 
+		if (dto.serviceType === ServiceType.DELIVERY && !dto.deliveryDetails) {
+			throw new BadRequestException(
+				'Detalhes de entrega são obrigatórios para serviço de entrega',
+			);
+		}
+
 		if (dto.idempotencyKey) {
 			const existing = await this.prisma.client.trip.findUnique({
 				where: { idempotencyKey: dto.idempotencyKey },
@@ -137,12 +160,6 @@ export class TripsService {
 			if (existing) {
 				return this.findById(existing.id, userId, userRole);
 			}
-		}
-
-		if (dto.serviceType === ServiceType.DELIVERY && !dto.deliveryDetails) {
-			throw new BadRequestException(
-				'Detalhes de entrega são obrigatórios para serviço de entrega',
-			);
 		}
 
 		const estimate = await this.estimatePrice({
@@ -155,6 +172,7 @@ export class TripsService {
 
 		const tripData: Prisma.TripCreateInput = {
 			id: uuidv7(),
+			idempotencyKey: dto.idempotencyKey ?? undefined,
 			client: { connect: { id: clientId } },
 			serviceType: dto.serviceType,
 			status: TripStatus.REQUESTED,
@@ -190,10 +208,6 @@ export class TripsService {
 				: undefined,
 		};
 
-		if (dto.idempotencyKey) {
-			tripData.idempotencyKey = dto.idempotencyKey;
-		}
-
 		if (dto.requestLocation) {
 			tripData.requestLocation = coordsToWkt(
 				dto.requestLocation.lat,
@@ -217,27 +231,37 @@ export class TripsService {
 			tripData.deliveryStatus = DeliveryStatus.WAITING_PICKUP;
 		}
 
-		const trip = await this.prisma.client.trip.create({
-			data: tripData,
-			select: {
-				...defaultTripSelect,
-				client: {
-					select: {
-						id: true,
-						name: true,
-						surname: true,
-						phoneNumber: true,
-					},
-				},
-				deliveryDetails: true,
-			},
-		});
+		let trip: TripCreatePayload | null = null;
+
+		try {
+			trip = await this.prisma.client.trip.create({
+				data: tripData,
+				select: tripCreateSelect,
+			});
+		} catch (err: unknown) {
+			if (
+				err instanceof Prisma.PrismaClientKnownRequestError &&
+				err.code === 'P2002' &&
+				dto.idempotencyKey
+			) {
+				const existing = await this.prisma.client.trip.findUnique({
+					where: { idempotencyKey: dto.idempotencyKey },
+					select: { id: true },
+				});
+				if (existing) {
+					return this.findById(existing.id, userId, userRole);
+				}
+			}
+			throw err;
+		}
+
+		const createdTrip = trip;
 
 		if (dto.serviceType === ServiceType.DELIVERY && dto.deliveryDetails) {
 			await this.prisma.client.deliveryDetails.create({
 				data: {
 					id: uuidv7(),
-					tripId: trip.id,
+					tripId: createdTrip.id,
 					receiverName: dto.deliveryDetails.receiverName,
 					receiverPhone: dto.deliveryDetails.receiverPhone,
 					packageType: dto.deliveryDetails.packageType,
@@ -247,23 +271,23 @@ export class TripsService {
 		}
 
 		await this.createTripEvent(
-			trip.id,
+			createdTrip.id,
 			TripEventType.TRIP_REQUESTED,
 			clientId,
 		);
 
-		this.tripGateway.emitTripStatus(trip.id, TripStatus.REQUESTED, {
+		this.tripGateway.emitTripStatus(createdTrip.id, TripStatus.REQUESTED, {
 			clientId,
 			serviceType: dto.serviceType,
 		});
 
 		this.logger.log(
-			`Trip ${trip.id} created for client ${clientId} (${dto.serviceType})`,
+			`Trip ${createdTrip.id} created for client ${clientId} (${dto.serviceType})`,
 			'TripsService',
 		);
 
 		let dispatchEnqueued = false;
-		const coordsMatch = trip.pickupCoords.match(
+		const coordsMatch = createdTrip.pickupCoords.match(
 			/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
 		);
 		if (coordsMatch) {
@@ -271,7 +295,7 @@ export class TripsService {
 			const pickupLat = parseFloat(coordsMatch[2]);
 			try {
 				await this.dispatchService.enqueueOfferTrip({
-					tripId: trip.id,
+					tripId: createdTrip.id,
 					clientId,
 					pickupLat,
 					pickupLng,
@@ -282,7 +306,7 @@ export class TripsService {
 				dispatchEnqueued = true;
 			} catch (err: unknown) {
 				this.logger.error(
-					`Failed to enqueue dispatch for trip ${trip.id}`,
+					`Failed to enqueue dispatch for trip ${createdTrip.id}`,
 					err instanceof Error ? err.message : String(err),
 				);
 			}
@@ -292,7 +316,7 @@ export class TripsService {
 			await this.couponsService.incrementUsage(estimate.couponId);
 		}
 
-		return trip;
+		return createdTrip;
 	}
 
 	async list(dto: ListTripsDto, userId: string, userRole: UserRole) {
@@ -1097,6 +1121,13 @@ export class TripsService {
 	) {
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id },
+			select: {
+				id: true,
+				clientId: true,
+				driverId: true,
+				status: true,
+				deletedAt: true,
+			},
 		});
 
 		if (!trip || trip.deletedAt) {
@@ -1121,45 +1152,67 @@ export class TripsService {
 			}
 		}
 
-		if (!this.isValidTransition(trip.status, TripStatus.CANCELLED)) {
-			throw new BadRequestException(
-				`Viagem em estado ${trip.status} não pode ser cancelada`,
+		return await this.prisma.client.$transaction(async (tx) => {
+			const [lockedTrip] = await tx.$queryRawUnsafe<
+				{ id: string; status: string; driverId: string | null }[]
+			>(
+				`SELECT id, status, "driverId" FROM "Trip" WHERE id = $1 FOR UPDATE`,
+				id,
 			);
-		}
 
-		const updated = await this.prisma.client.trip.update({
-			where: { id },
-			data: {
-				status: TripStatus.CANCELLED,
-				cancelledAt: new Date(),
-				cancelReason,
-				cancelledByUserId: userId,
-			},
-			select: defaultTripSelect,
-		});
+			if (!lockedTrip) {
+				throw new NotFoundException('Viagem não encontrada');
+			}
 
-		if (trip.driverId) {
-			await this.prisma.client.driver.update({
-				where: { id: trip.driverId },
+			if (
+				!this.isValidTransition(
+					lockedTrip.status as TripStatus,
+					TripStatus.CANCELLED,
+				)
+			) {
+				throw new BadRequestException(
+					`Viagem em estado ${lockedTrip.status} não pode ser cancelada`,
+				);
+			}
+
+			const updated = await tx.trip.update({
+				where: { id },
 				data: {
-					cancelledTripsCount: { increment: 1 },
+					status: TripStatus.CANCELLED,
+					cancelledAt: new Date(),
+					cancelReason,
+					cancelledByUserId: userId,
 				},
+				select: defaultTripSelect,
 			});
-		}
 
-		await this.createTripEvent(id, TripEventType.TRIP_CANCELLED, userId);
+			if (lockedTrip.driverId) {
+				await tx.driver.update({
+					where: { id: lockedTrip.driverId },
+					data: {
+						cancelledTripsCount: { increment: 1 },
+					},
+				});
+			}
 
-		this.tripGateway.emitTripStatus(id, TripStatus.CANCELLED, {
-			cancelReason,
-			cancelledBy: userId,
+			await this.createTripEvent(
+				id,
+				TripEventType.TRIP_CANCELLED,
+				userId,
+			);
+
+			this.tripGateway.emitTripStatus(id, TripStatus.CANCELLED, {
+				cancelReason,
+				cancelledBy: userId,
+			});
+
+			this.logger.log(
+				`Trip ${id} cancelled by ${userId}: ${cancelReason}`,
+				'TripsService',
+			);
+
+			return updated;
 		});
-
-		this.logger.log(
-			`Trip ${id} cancelled by ${userId}: ${cancelReason}`,
-			'TripsService',
-		);
-
-		return updated;
 	}
 
 	async updatePayment(id: string, dto: UpdatePaymentStatusDto) {

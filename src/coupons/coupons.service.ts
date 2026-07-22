@@ -380,9 +380,27 @@ export class CouponsService {
 	}
 
 	async incrementUsage(id: string) {
-		await this.prisma.client.coupon.update({
+		const coupon = await this.prisma.client.coupon.findUnique({
 			where: { id },
+			select: { usageLimit: true, usageCount: true },
+		});
+
+		if (!coupon) return;
+
+		const where: Record<string, unknown> = { id };
+		if (coupon.usageLimit) {
+			where.usageCount = { lt: coupon.usageLimit };
+		}
+
+		const result = await this.prisma.client.coupon.updateMany({
+			where,
 			data: { usageCount: { increment: 1 } },
 		});
+
+		if (result.count === 0) {
+			this.logger.warn(
+				`Coupon ${id} usage limit reached on concurrent increment`,
+			);
+		}
 	}
 }

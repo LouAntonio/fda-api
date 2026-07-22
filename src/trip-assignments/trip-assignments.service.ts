@@ -303,92 +303,88 @@ export class TripAssignmentsService {
 		tripId: string;
 		driverId: string;
 	}) {
-		const [trip, driver] = await Promise.all([
-			this.prisma.client.trip.findUnique({
-				where: { id: assignment.tripId },
-				select: { id: true, status: true, clientId: true },
-			}),
-			this.prisma.client.driver.findUnique({
-				where: { id: assignment.driverId },
-				select: {
-					id: true,
-					userId: true,
-					user: {
-						select: {
-							id: true,
-							name: true,
-							surname: true,
-							phoneNumber: true,
-						},
-					},
-					vehicles: {
-						where: { status: 'ACTIVE' },
-						select: {
-							id: true,
-							plateNumber: true,
-							brand: true,
-							model: true,
-							color: true,
-						},
-						take: 1,
-					},
-				},
-			}),
-		]);
-
-		if (!trip || trip.status !== TripStatus.REQUESTED) {
-			throw new BadRequestException(
-				'Esta viagem já não está disponível para aceitação',
-			);
-		}
-
-		if (!driver) {
-			throw new NotFoundException('Motorista não encontrado');
-		}
-
-		const result = await this.prisma.client.$transaction(async (tx) => {
-			const currentTrip = await tx.trip.findUnique({
-				where: { id: trip.id },
-				select: { status: true },
-			});
-
-			if (!currentTrip || currentTrip.status !== TripStatus.REQUESTED) {
-				throw new BadRequestException(
-					'Esta viagem já não está disponível para aceitação',
+		const { trip, driver, result } = await this.prisma.client.$transaction(
+			async (tx) => {
+				const [lockedTrip] = await tx.$queryRawUnsafe<
+					{ id: string; status: string; clientId: string }[]
+				>(
+					`SELECT id, status, "clientId" FROM "Trip" WHERE id = $1 FOR UPDATE`,
+					assignment.tripId,
 				);
-			}
 
-			const updated = await tx.tripAssignment.update({
-				where: { id: assignment.id },
-				data: { status: TripAssignmentStatus.ACCEPTED },
-				select: defaultAssignmentSelect,
-			});
+				if (!lockedTrip || lockedTrip.status !== TripStatus.REQUESTED) {
+					throw new BadRequestException(
+						'Esta viagem já não está disponível para aceitação',
+					);
+				}
 
-			await tx.trip.update({
-				where: { id: trip.id },
-				data: {
-					driverId: driver.id,
-					status: TripStatus.ACCEPTED,
-					acceptedAt: new Date(),
-				},
-			});
+				const driverData = await this.prisma.client.driver.findUnique({
+					where: { id: assignment.driverId },
+					select: {
+						id: true,
+						userId: true,
+						user: {
+							select: {
+								id: true,
+								name: true,
+								surname: true,
+								phoneNumber: true,
+							},
+						},
+						vehicles: {
+							where: { status: 'ACTIVE' },
+							select: {
+								id: true,
+								plateNumber: true,
+								brand: true,
+								model: true,
+								color: true,
+							},
+							take: 1,
+						},
+					},
+				});
 
-			await tx.driver.update({
-				where: { id: driver.id },
-				data: { availability: 'BUSY' },
-			});
+				if (!driverData) {
+					throw new NotFoundException('Motorista não encontrado');
+				}
 
-			await tx.tripAssignment.updateMany({
-				where: {
-					tripId: trip.id,
-					status: TripAssignmentStatus.OFFERED,
-					id: { not: assignment.id },
-				},
-				data: { status: TripAssignmentStatus.EXPIRED },
-			});
+				const updated = await tx.tripAssignment.update({
+					where: { id: assignment.id },
+					data: { status: TripAssignmentStatus.ACCEPTED },
+					select: defaultAssignmentSelect,
+				});
 
-			return updated;
-		});
+				await tx.trip.update({
+					where: { id: assignment.tripId },
+					data: {
+						driverId: driverData.id,
+						status: TripStatus.ACCEPTED,
+						acceptedAt: new Date(),
+					},
+				});
+
+				await tx.driver.update({
+					where: { id: driverData.id },
+					data: { availability: 'BUSY' },
+				});
+
+				await tx.tripAssignment.updateMany({
+					where: {
+						tripId: assignment.tripId,
+						status: TripAssignmentStatus.OFFERED,
+						id: { not: assignment.id },
+					},
+					data: { status: TripAssignmentStatus.EXPIRED },
+				});
+
+				return {
+					trip: lockedTrip,
+					driver: driverData,
+					result: updated,
+				};
+			},
+		);
 
 		await this.dispatchService.cancelPendingTimeouts(trip.id);
 		await this.dispatchService.cancelPendingOffers(trip.id);
