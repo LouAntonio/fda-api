@@ -16,13 +16,9 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
-import { LinkGoogleDto } from './dto/link-google.dto';
-import { LinkPasswordDto } from './dto/link-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -42,26 +38,6 @@ export class AuthController {
 	@Post('register')
 	register(@Body(ValidationPipe) dto: RegisterDto) {
 		return this.authService.register(dto);
-	}
-
-	@ApiOperation({
-		summary: 'Verificar email',
-		description: 'Verifica o email do utilizador com o token recebido',
-	})
-	@Throttle({ default: { limit: 5, ttl: 60000 } })
-	@Post('verify-email')
-	verifyEmail(@Body(ValidationPipe) dto: VerifyEmailDto) {
-		return this.authService.verifyEmail(dto);
-	}
-
-	@ApiOperation({
-		summary: 'Reenviar verificação',
-		description: 'Reenvia o email de verificação de conta',
-	})
-	@Throttle({ default: { limit: 3, ttl: 60000 } })
-	@Post('resend-verification')
-	resendVerification(@Body(ValidationPipe) dto: ResendVerificationDto) {
-		return this.authService.resendVerification(dto);
 	}
 
 	@ApiOperation({
@@ -123,47 +99,6 @@ export class AuthController {
 	@Post('reset-password')
 	resetPassword(@Body(ValidationPipe) dto: ResetPasswordDto) {
 		return this.authService.resetPassword(dto);
-	}
-
-	@ApiBearerAuth()
-	@ApiOperation({
-		summary: 'Vincular conta Google',
-		description: 'Vincular conta Google ao utilizador autenticado',
-	})
-	@UseGuards(JwtAuthGuard)
-	@Post('link/google')
-	linkGoogle(@Req() req: Request, @Body(ValidationPipe) dto: LinkGoogleDto) {
-		const user = req.user as { id: string };
-		return this.authService.linkGoogle(user.id, dto);
-	}
-
-	@ApiBearerAuth()
-	@ApiOperation({
-		summary: 'Desvincular conta Google',
-		description:
-			'Remove a conta Google vinculada ao utilizador autenticado',
-	})
-	@UseGuards(JwtAuthGuard)
-	@Post('unlink/google')
-	unlinkGoogle(@Req() req: Request) {
-		const user = req.user as { id: string };
-		return this.authService.unlinkGoogle(user.id);
-	}
-
-	@ApiBearerAuth()
-	@ApiOperation({
-		summary: 'Vincular palavra-passe',
-		description:
-			'Define uma palavra-passe para a conta autenticada (útil após login com Google)',
-	})
-	@UseGuards(JwtAuthGuard)
-	@Post('link/password')
-	linkPassword(
-		@Req() req: Request,
-		@Body(ValidationPipe) dto: LinkPasswordDto,
-	) {
-		const user = req.user as { id: string };
-		return this.authService.linkPassword(user.id, dto);
 	}
 
 	@ApiBearerAuth()

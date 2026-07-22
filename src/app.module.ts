@@ -22,7 +22,7 @@ import { TripAssignmentsModule } from './trip-assignments/trip-assignments.modul
 import { DispatchModule } from './dispatch/dispatch.module';
 import { CleanupModule } from './cleanup/cleanup.module';
 import { PayoutModule } from './payout/payout.module';
-import { DeliveryDetailsModule } from './delivery-details/delivery-details.module';
+
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
 import { FinancialTransactionsModule } from './financial-transactions/financial-transactions.module';
@@ -31,7 +31,7 @@ import { DisputesModule } from './disputes/disputes.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { SupportModule } from './support/support.module';
-import { AdminModule } from './admin/admin.module';
+
 import { AppController } from './app.controller';
 import { HealthController } from './health/health.controller';
 import { AppService } from './app.service';
@@ -65,7 +65,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		TripGatewayModule,
 		TripAssignmentsModule,
 		DispatchModule,
-		DeliveryDetailsModule,
+
 		TripEventsModule,
 		TripLocationPointsModule,
 		FinancialTransactionsModule,
@@ -74,7 +74,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 		ReviewsModule,
 		AuditLogsModule,
 		SupportModule,
-		AdminModule,
+
 		CleanupModule,
 		PayoutModule,
 	],

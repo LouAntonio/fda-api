@@ -16,10 +16,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { LinkGoogleDto } from './dto/link-google.dto';
-import { LinkPasswordDto } from './dto/link-password.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
+
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -237,97 +234,6 @@ export class AuthService {
 					accounts: [{ providerId: 'google' }],
 				},
 			},
-		};
-	}
-
-	async linkGoogle(userId: string, dto: LinkGoogleDto) {
-		const payload = await this.googleAuth.verifyToken(dto.idToken);
-		if (!payload.email) {
-			throw new UnauthorizedException('Token Google inválido');
-		}
-
-		const existingAccount = await this.prisma.client.account.findFirst({
-			where: {
-				providerId: 'google',
-				accountId: payload.sub,
-			},
-		});
-
-		if (existingAccount) {
-			throw new ConflictException(
-				'Esta conta Google já está vinculada a outro usuário',
-			);
-		}
-
-		await this.prisma.client.account.create({
-			data: {
-				id: uuidv7(),
-				userId,
-				providerId: 'google',
-				accountId: payload.sub,
-			},
-		});
-
-		return {
-			msg: 'Conta Google vinculada com sucesso',
-		};
-	}
-
-	async unlinkGoogle(userId: string) {
-		const credentialAccount = await this.prisma.client.account.findFirst({
-			where: { userId, providerId: 'credential' },
-		});
-
-		if (!credentialAccount) {
-			throw new BadRequestException(
-				'Defina uma palavra-passe antes de desvincular a conta Google.',
-			);
-		}
-
-		const googleAccount = await this.prisma.client.account.findFirst({
-			where: { userId, providerId: 'google' },
-		});
-
-		if (!googleAccount) {
-			throw new BadRequestException('Nenhuma conta Google vinculada.');
-		}
-
-		await this.prisma.client.account.delete({
-			where: { id: googleAccount.id },
-		});
-
-		return {
-			msg: 'Conta Google desvinculada com sucesso.',
-		};
-	}
-
-	async linkPassword(userId: string, dto: LinkPasswordDto) {
-		const existingAccount = await this.prisma.client.account.findFirst({
-			where: { userId, providerId: 'credential' },
-		});
-
-		if (existingAccount) {
-			throw new ConflictException('Você já possui uma senha cadastrada');
-		}
-
-		const hashedPassword = await this.bcrypt.hash(dto.password);
-
-		await this.prisma.client.account.create({
-			data: {
-				id: uuidv7(),
-				userId,
-				providerId: 'credential',
-				accountId: userId,
-				password: hashedPassword,
-			},
-		});
-
-		await this.prisma.client.session.deleteMany({
-			where: { userId },
-		});
-
-		return {
-			msg: 'Senha cadastrada com sucesso',
 		};
 	}
 
@@ -722,62 +628,4 @@ export class AuthService {
 			);
 	}
 
-	async verifyEmail(dto: VerifyEmailDto) {
-		const verification = await this.prisma.client.verification.findUnique({
-			where: {
-				identifier_value: {
-					identifier: 'email_verification',
-					value: this.hashToken(dto.token),
-				},
-				expiresAt: { gte: new Date() },
-			},
-		});
-
-		if (!verification || !verification.userId) {
-			throw new BadRequestException(
-				'Token de verificação inválido ou expirado',
-			);
-		}
-
-		const user = await this.prisma.client.user.findUnique({
-			where: { id: verification.userId },
-		});
-
-		if (!user) {
-			throw new BadRequestException(
-				'Token de verificação inválido ou expirado',
-			);
-		}
-
-		await this.prisma.client.user.update({
-			where: { id: user.id },
-			data: { emailVerified: true },
-		});
-
-		await this.prisma.client.verification.delete({
-			where: { id: verification.id },
-		});
-
-		await this.resend
-			.sendEmailVerifiedEmail(user.email ?? '', user.name ?? undefined)
-			.catch(() => {});
-
-		return {
-			msg: 'Email verificado com sucesso',
-		};
-	}
-
-	async resendVerification(dto: ResendVerificationDto) {
-		const user = await this.prisma.client.user.findUnique({
-			where: { email: dto.email },
-		});
-
-		if (user && !user.emailVerified && user.email) {
-			await this.sendVerificationEmail(user).catch(() => {});
-		}
-
-		return {
-			msg: 'Se o email existir, um novo link de verificação foi enviado',
-		};
-	}
 }
