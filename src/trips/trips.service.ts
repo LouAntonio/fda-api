@@ -797,6 +797,7 @@ export class TripsService {
 
 					const driverUpdateData1: Prisma.DriverUpdateInput = {
 						completedTripsCount: { increment: 1 },
+						availability: 'ONLINE',
 					};
 					if (trip.paymentMethod !== 'CASH') {
 						driverUpdateData1.availableBalance = {
@@ -815,6 +816,7 @@ export class TripsService {
 
 					const driverUpdateData2: Prisma.DriverUpdateInput = {
 						completedTripsCount: { increment: 1 },
+						availability: 'ONLINE',
 					};
 					if (trip.paymentMethod !== 'CASH') {
 						driverUpdateData2.availableBalance = {
@@ -851,6 +853,7 @@ export class TripsService {
 					);
 				const driverUpdateData3: Prisma.DriverUpdateInput = {
 					completedTripsCount: { increment: 1 },
+					availability: 'ONLINE',
 				};
 				if (trip.paymentMethod !== 'CASH') {
 					driverUpdateData3.availableBalance = {
@@ -869,6 +872,7 @@ export class TripsService {
 				where: { id: trip.driverId },
 				data: {
 					cancelledTripsCount: { increment: 1 },
+					availability: 'ONLINE',
 				},
 			});
 		}
