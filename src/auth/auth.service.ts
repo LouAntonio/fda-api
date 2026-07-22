@@ -8,7 +8,6 @@ import * as crypto from 'crypto';
 import { uuidv7 } from 'uuidv7';
 import { PrismaService } from '../prisma/prisma.service';
 import { BcryptService } from './services/bcrypt.service';
-import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
 import { ResendService } from '../email/resend.service';
 import { LoggerService } from '../logger/logger.service';
@@ -27,7 +26,6 @@ export class AuthService {
 	constructor(
 		private prisma: PrismaService,
 		private bcrypt: BcryptService,
-		private googleAuth: GoogleAuthService,
 		private tokenService: TokenService,
 		private resend: ResendService,
 		private logger: LoggerService,
@@ -122,116 +120,6 @@ export class AuthService {
 					image: user.image,
 					hasPassword: !!credentialAccount.password,
 					accounts,
-				},
-			},
-		};
-	}
-
-	async googleLogin(accessToken: string) {
-		const payload = await this.googleAuth.verifyToken(accessToken);
-		if (!payload.email) {
-			throw new UnauthorizedException('Autenticação falhou');
-		}
-
-		const existingAccount = await this.prisma.client.account.findFirst({
-			where: {
-				providerId: 'google',
-				accountId: payload.sub,
-			},
-			include: { user: true },
-		});
-
-		if (existingAccount) {
-			const tokens = await this.tokenService.generateAuthTokens({
-				id: existingAccount.user.id,
-				email: existingAccount.user.email ?? '',
-			});
-			const accounts = await this.prisma.client.account.findMany({
-				where: { userId: existingAccount.user.id },
-				select: { providerId: true },
-			});
-
-			return {
-				msg: 'Login realizado com sucesso',
-				data: {
-					accessToken: tokens.accessToken,
-					refreshToken: tokens.refreshToken,
-					user: {
-						id: existingAccount.user.id,
-						email: existingAccount.user.email,
-						name: existingAccount.user.name,
-						emailVerified: existingAccount.user.emailVerified,
-						role: existingAccount.user.role,
-						phoneNumber: existingAccount.user.phoneNumber,
-						createdAt: existingAccount.user.createdAt,
-						image: existingAccount.user.image,
-						hasPassword: false,
-						accounts,
-					},
-				},
-			};
-		}
-
-		const existingUser = await this.prisma.client.user.findUnique({
-			where: { email: payload.email },
-		});
-
-		if (existingUser) {
-			throw new UnauthorizedException(
-				'Esta conta de email já possui um cadastro. Faça login com email e senha e vincule sua conta Google nas configurações.',
-			);
-		}
-
-		const user = await this.prisma.client.user.create({
-			data: {
-				id: uuidv7(),
-				email: payload.email,
-				name: payload.name ?? 'Utilizador',
-				emailVerified: true,
-				image: payload.picture,
-			},
-		});
-
-		await this.prisma.client.account.create({
-			data: {
-				id: uuidv7(),
-				userId: user.id,
-				providerId: 'google',
-				accountId: payload.sub,
-			},
-		});
-
-		await this.resend
-			.sendWelcomeEmail(user.email ?? '', user.name ?? undefined)
-			.catch((err: unknown) =>
-				this.logger.error(
-					'Failed to send welcome email',
-					err as string | undefined,
-					'AuthService',
-				),
-			);
-
-		const tokens = await this.tokenService.generateAuthTokens({
-			id: user.id,
-			email: user.email ?? '',
-		});
-
-		return {
-			msg: 'Login realizado com sucesso',
-			data: {
-				accessToken: tokens.accessToken,
-				refreshToken: tokens.refreshToken,
-				user: {
-					id: user.id,
-					email: user.email,
-					name: user.name,
-					emailVerified: user.emailVerified,
-					role: user.role,
-					phoneNumber: user.phoneNumber,
-					createdAt: user.createdAt,
-					image: user.image,
-					hasPassword: false,
-					accounts: [{ providerId: 'google' }],
 				},
 			},
 		};

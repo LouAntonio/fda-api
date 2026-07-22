@@ -76,10 +76,17 @@ export class PayoutProcessor extends WorkerHost {
 		});
 
 		for (const driver of drivers) {
-			await this.handleProcessPayout({
-				driverId: driver.id,
-				amount: Number(driver.pendingBalance),
-			});
+			try {
+				await this.handleProcessPayout({
+					driverId: driver.id,
+					amount: Number(driver.pendingBalance),
+				});
+			} catch (error) {
+				this.logger.error(
+					`Batch payout failed for driver ${driver.id}`,
+					error,
+				);
+			}
 		}
 
 		this.logger.log(`Batch payout processed for ${drivers.length} drivers`);

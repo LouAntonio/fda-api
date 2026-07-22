@@ -6,7 +6,6 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { BcryptService } from './services/bcrypt.service';
-import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
 import { ResendModule } from '../email/resend.module';
 
@@ -28,7 +27,6 @@ import { ResendModule } from '../email/resend.module';
 		JwtStrategy,
 		JwtRefreshStrategy,
 		BcryptService,
-		GoogleAuthService,
 		TokenService,
 	],
 	exports: [AuthService, JwtModule, PassportModule, BcryptService],

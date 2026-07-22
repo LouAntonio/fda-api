@@ -15,7 +15,6 @@ import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { GoogleLoginDto } from './dto/google-login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -48,16 +47,6 @@ export class AuthController {
 	@Post('login')
 	login(@Body(ValidationPipe) dto: LoginDto) {
 		return this.authService.login(dto);
-	}
-
-	@ApiOperation({
-		summary: 'Login com Google',
-		description: 'Autentica o utilizador com Google OAuth',
-	})
-	@Throttle({ default: { limit: 5, ttl: 60000 } })
-	@Post('google')
-	googleLogin(@Body(ValidationPipe) dto: GoogleLoginDto) {
-		return this.authService.googleLogin(dto.accessToken);
 	}
 
 	@ApiOperation({

@@ -91,6 +91,39 @@ export class ExpoPushService {
 		);
 	}
 
+	async sendToAllAdmins(payload: {
+		title: string;
+		body: string;
+		data?: Record<string, string>;
+	}): Promise<void> {
+		if (!this.isConfigured()) {
+			this.logger.warn(
+				'EXPO_ACCESS_TOKEN or EXPO_PROJECT_ID not set, skipping push notification',
+			);
+			return;
+		}
+
+		try {
+			const admins = await this.prisma.client.user.findMany({
+				where: {
+					role: { in: ['SUPER_ADMIN', 'OPERATIONS', 'SUPPORT'] },
+					deletedAt: null,
+				},
+				select: { id: true },
+			});
+
+			const adminIds = admins.map((a) => a.id);
+			if (adminIds.length === 0) return;
+
+			await this.sendToMultipleUsers(adminIds, payload);
+		} catch (error) {
+			this.logger.error(
+				'Failed to send push notification to all admins',
+				error,
+			);
+		}
+	}
+
 	private async sendMessages(
 		messages: ExpoPushMessage[],
 		pushTokens: { id: string; token: string }[],
