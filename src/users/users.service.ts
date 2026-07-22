@@ -3,6 +3,8 @@ import {
 	NotFoundException,
 	BadRequestException,
 	ConflictException,
+	Inject,
+	forwardRef,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
 import * as crypto from 'crypto';
@@ -11,6 +13,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BcryptService } from '../auth/services/bcrypt.service';
 import { ResendService } from '../email/resend.service';
 import { LoggerService } from '../logger/logger.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { BanUserDto } from './dto/ban-user.dto';
@@ -56,6 +59,8 @@ export class UsersService {
 		private bcrypt: BcryptService,
 		private resend: ResendService,
 		private logger: LoggerService,
+		@Inject(forwardRef(() => WhatsappService))
+		private whatsapp: WhatsappService,
 	) {}
 
 	async list(dto: ListUsersDto) {
@@ -579,6 +584,15 @@ export class UsersService {
 			);
 		}
 
+		const session = await this.prisma.client.whatsAppSession.findFirst({
+			where: { status: 'CONNECTED' },
+		});
+		if (!session) {
+			throw new BadRequestException(
+				'A verificação por WhatsApp não está disponível de momento. Tenta novamente mais tarde.',
+			);
+		}
+
 		const code = Math.floor(100000 + Math.random() * 900000).toString();
 		const hashedCode = crypto
 			.createHash('sha256')
@@ -604,13 +618,15 @@ export class UsersService {
 			},
 		});
 
+		await this.whatsapp.sendOTP(user.phoneNumber ?? '', code);
+
 		this.logger.log(
-			`Phone verification code created for user ${userId}`,
+			`Phone verification code sent via WhatsApp to user ${userId}`,
 			'UsersService',
 		);
 
 		return {
-			msg: 'Código de verificação enviado (apenas estrutura preparada)',
+			msg: 'Código de verificação enviado via WhatsApp',
 		};
 	}
 

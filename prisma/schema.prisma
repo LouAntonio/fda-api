@@ -684,3 +684,20 @@ enum SupportTicketStatus {
 	IN_PROGRESS
 	RESOLVED
 }
+
+model WhatsAppSession {
+	id          String                 @id @db.Uuid
+	status      WhatsAppSessionStatus  @default(DISCONNECTED)
+	phoneNumber String?
+	sessionData Json?
+	qrCode      String?
+	createdAt   DateTime               @default(now())
+	updatedAt   DateTime               @updatedAt
+}
+
+enum WhatsAppSessionStatus {
+	CONNECTED
+	DISCONNECTED
+	SCANNING
+	EXPIRED
+}

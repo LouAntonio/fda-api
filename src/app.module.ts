@@ -22,6 +22,7 @@ import { TripAssignmentsModule } from './trip-assignments/trip-assignments.modul
 import { DispatchModule } from './dispatch/dispatch.module';
 import { CleanupModule } from './cleanup/cleanup.module';
 import { PayoutModule } from './payout/payout.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 import { TripEventsModule } from './trip-events/trip-events.module';
 import { TripLocationPointsModule } from './trip-location-points/trip-location-points.module';
@@ -77,6 +78,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 
 		CleanupModule,
 		PayoutModule,
+		WhatsappModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [
