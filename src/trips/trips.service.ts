@@ -135,9 +135,7 @@ export class TripsService {
 				select: { id: true },
 			});
 			if (existing) {
-				throw new BadRequestException(
-					'Já existe uma viagem com esta chave de idempotência',
-				);
+				return this.findById(existing.id, userId, userRole);
 			}
 		}
 
@@ -254,10 +252,6 @@ export class TripsService {
 			clientId,
 		);
 
-		if (estimate.couponId) {
-			await this.couponsService.incrementUsage(estimate.couponId);
-		}
-
 		this.tripGateway.emitTripStatus(trip.id, TripStatus.REQUESTED, {
 			clientId,
 			serviceType: dto.serviceType,
@@ -268,14 +262,15 @@ export class TripsService {
 			'TripsService',
 		);
 
+		let dispatchEnqueued = false;
 		const coordsMatch = trip.pickupCoords.match(
 			/POINT\(([-\d.]+)\s+([-\d.]+)\)/,
 		);
 		if (coordsMatch) {
 			const pickupLng = parseFloat(coordsMatch[1]);
 			const pickupLat = parseFloat(coordsMatch[2]);
-			await this.dispatchService
-				.enqueueOfferTrip({
+			try {
+				await this.dispatchService.enqueueOfferTrip({
 					tripId: trip.id,
 					clientId,
 					pickupLat,
@@ -283,13 +278,18 @@ export class TripsService {
 					vehicleType: dto.vehicleType,
 					attempt: 1,
 					excludedDriverIds: [],
-				})
-				.catch((err: unknown) =>
-					this.logger.error(
-						`Failed to enqueue dispatch for trip ${trip.id}`,
-						err instanceof Error ? err.message : String(err),
-					),
+				});
+				dispatchEnqueued = true;
+			} catch (err: unknown) {
+				this.logger.error(
+					`Failed to enqueue dispatch for trip ${trip.id}`,
+					err instanceof Error ? err.message : String(err),
 				);
+			}
+		}
+
+		if (estimate.couponId && dispatchEnqueued) {
+			await this.couponsService.incrementUsage(estimate.couponId);
 		}
 
 		return trip;
@@ -589,6 +589,44 @@ export class TripsService {
 			data.dropoffUserAddressId = dto.dropoffUserAddressId;
 		}
 
+		if (dto.actualDistanceKm !== undefined && trip.priceConfigId) {
+			const priceConfig =
+				await this.prisma.client.priceConfig.findUnique({
+					where: { id: trip.priceConfigId },
+				});
+			if (priceConfig) {
+				const actualDuration =
+					dto.actualDurationMin ??
+					trip.estimatedDurationMin ??
+					1;
+				let subtotal =
+					Number(priceConfig.baseFare) +
+					Number(priceConfig.pricePerKm) *
+						dto.actualDistanceKm +
+					Number(priceConfig.pricePerMin) * actualDuration;
+				subtotal = subtotal * Number(trip.surgeMultiplierApplied ?? 1);
+				subtotal = Math.max(
+					Number(priceConfig.minFare),
+					subtotal,
+				);
+				subtotal = Math.max(
+					0,
+					subtotal - Number(trip.discountAmount ?? 0),
+				);
+				const ivaAmount = subtotal * priceConfig.ivaRate;
+				const serviceFee = subtotal * priceConfig.serviceFeeRate;
+				const driverEarnings = subtotal - serviceFee;
+				const totalPrice = subtotal + ivaAmount;
+				Object.assign(data, {
+					subtotal: round(subtotal, 2),
+					ivaAmount: round(ivaAmount, 2),
+					serviceFee: round(serviceFee, 2),
+					driverEarnings: round(driverEarnings, 2),
+					totalPrice: round(totalPrice, 2),
+				});
+			}
+		}
+
 		if (Object.keys(data).length === 0) {
 			throw new BadRequestException('Nenhum dado para atualizar');
 		}
@@ -681,6 +719,7 @@ export class TripsService {
 		});
 
 		if (nextStatus === TripStatus.COMPLETED && trip.driverId) {
+			const completedDriverId: string = trip.driverId;
 			let actualDurationMin = trip.estimatedDurationMin ?? 1;
 			let actualDistanceKm: number | null | undefined =
 				trip.estimatedDistanceKm;
@@ -755,9 +794,9 @@ export class TripsService {
 							Number(actualDistanceKm) +
 						Number(priceConfig.pricePerMin) * actualDurationMin;
 
-					subtotal = Math.max(Number(priceConfig.minFare), subtotal);
 					subtotal =
 						subtotal * Number(trip.surgeMultiplierApplied ?? 1);
+					subtotal = Math.max(Number(priceConfig.minFare), subtotal);
 					subtotal = Math.max(
 						0,
 						subtotal - Number(trip.discountAmount ?? 0),
@@ -777,55 +816,59 @@ export class TripsService {
 						paymentStatus: 'PAID',
 					});
 
-					await this.prisma.client.trip.update({
-						where: { id },
-						data: baseTripUpdate,
-					});
+					await this.prisma.client.$transaction(async (tx) => {
+						await tx.trip.update({
+							where: { id },
+							data: baseTripUpdate,
+						});
 
-					await this.prisma.client.financialTransaction.create({
-						data: {
-							id: uuidv7(),
-							tripId: id,
-							userId: trip.clientId,
-							driverId: trip.driverId,
-							type: 'TRIP_PAYMENT',
-							status: 'COMPLETED',
-							amount: round(totalPrice, 2),
-							currency: 'AOA',
-						},
-					});
+						await tx.financialTransaction.create({
+							data: {
+								id: uuidv7(),
+								tripId: id,
+								userId: trip.clientId,
+								driverId: completedDriverId,
+								type: 'TRIP_PAYMENT',
+								status: 'COMPLETED',
+								amount: round(totalPrice, 2),
+								currency: 'AOA',
+							},
+						});
 
-					const driverUpdateData1: Prisma.DriverUpdateInput = {
-						completedTripsCount: { increment: 1 },
-						availability: 'ONLINE',
-					};
-					if (trip.paymentMethod !== 'CASH') {
-						driverUpdateData1.availableBalance = {
-							increment: round(driverEarnings, 2),
+						const driverUpdateData1: Prisma.DriverUpdateInput = {
+							completedTripsCount: { increment: 1 },
+							availability: 'ONLINE',
 						};
-					}
-					await this.prisma.client.driver.update({
-						where: { id: trip.driverId },
-						data: driverUpdateData1,
+						if (trip.paymentMethod !== 'CASH') {
+							driverUpdateData1.availableBalance = {
+								increment: round(driverEarnings, 2),
+							};
+						}
+						await tx.driver.update({
+							where: { id: completedDriverId },
+							data: driverUpdateData1,
+						});
 					});
 				} else {
-					await this.prisma.client.trip.update({
-						where: { id },
-						data: baseTripUpdate,
-					});
+					await this.prisma.client.$transaction(async (tx) => {
+						await tx.trip.update({
+							where: { id },
+							data: baseTripUpdate,
+						});
 
-					const driverUpdateData2: Prisma.DriverUpdateInput = {
-						completedTripsCount: { increment: 1 },
-						availability: 'ONLINE',
-					};
-					if (trip.paymentMethod !== 'CASH') {
-						driverUpdateData2.availableBalance = {
-							increment: Number(trip.driverEarnings ?? 0),
+						const driverUpdateData2: Prisma.DriverUpdateInput = {
+							completedTripsCount: { increment: 1 },
+							availability: 'ONLINE',
 						};
-					}
-					await this.prisma.client.driver.update({
-						where: { id: trip.driverId },
-						data: driverUpdateData2,
+						if (trip.paymentMethod !== 'CASH') {
+							driverUpdateData2.availableBalance = {
+								increment: Number(trip.driverEarnings ?? 0),
+							};
+						}
+						await tx.driver.update({
+							where: { id: completedDriverId },
+							data: driverUpdateData2,
+						});
 					});
 				}
 			} catch (err: unknown) {
@@ -833,36 +876,38 @@ export class TripsService {
 					`Failed to process completion for trip ${id}`,
 					err instanceof Error ? err.message : String(err),
 				);
-				await this.prisma.client.trip
-					.update({
-						where: { id },
-						data: {
-							actualDistanceKm,
-							actualDurationMin,
-							actualPickupCoords,
-							actualDropoffCoords,
-						},
-					})
-					.catch((innerErr: unknown) =>
-						this.logger.error(
-							`Failed to save actual coords for trip ${id}`,
-							innerErr instanceof Error
-								? innerErr.message
-								: String(innerErr),
-						),
-					);
-				const driverUpdateData3: Prisma.DriverUpdateInput = {
-					completedTripsCount: { increment: 1 },
-					availability: 'ONLINE',
-				};
-				if (trip.paymentMethod !== 'CASH') {
-					driverUpdateData3.availableBalance = {
-						increment: Number(trip.driverEarnings ?? 0),
+				await this.prisma.client.$transaction(async (tx) => {
+					await tx.trip
+						.update({
+							where: { id },
+							data: {
+								actualDistanceKm,
+								actualDurationMin,
+								actualPickupCoords,
+								actualDropoffCoords,
+							},
+						})
+						.catch((innerErr: unknown) =>
+							this.logger.error(
+								`Failed to save actual coords for trip ${id}`,
+								innerErr instanceof Error
+									? innerErr.message
+									: String(innerErr),
+							),
+						);
+					const driverUpdateData3: Prisma.DriverUpdateInput = {
+						completedTripsCount: { increment: 1 },
+						availability: 'ONLINE',
 					};
-				}
-				await this.prisma.client.driver.update({
-					where: { id: trip.driverId },
-					data: driverUpdateData3,
+					if (trip.paymentMethod !== 'CASH') {
+						driverUpdateData3.availableBalance = {
+							increment: Number(trip.driverEarnings ?? 0),
+						};
+					}
+					await tx.driver.update({
+						where: { id: completedDriverId },
+						data: driverUpdateData3,
+					});
 				});
 			}
 		}
@@ -1143,17 +1188,26 @@ export class TripsService {
 		});
 
 		if (dto.externalReference) {
-			await this.prisma.client.financialTransaction.create({
-				data: {
-					id: uuidv7(),
-					tripId: id,
-					type: 'TRIP_PAYMENT',
-					status:
-						dto.paymentStatus === 'PAID' ? 'COMPLETED' : 'PENDING',
-					amount: trip.totalPrice,
-					externalReference: dto.externalReference,
-				},
-			});
+			const existingTx =
+				await this.prisma.client.financialTransaction.findFirst({
+					where: { tripId: id, type: 'TRIP_PAYMENT' },
+					select: { id: true },
+				});
+			if (!existingTx) {
+				await this.prisma.client.financialTransaction.create({
+					data: {
+						id: uuidv7(),
+						tripId: id,
+						type: 'TRIP_PAYMENT',
+						status:
+							dto.paymentStatus === 'PAID'
+								? 'COMPLETED'
+								: 'PENDING',
+						amount: trip.totalPrice,
+						externalReference: dto.externalReference,
+					},
+				});
+			}
 		}
 
 		this.tripGateway.sendToTripRoom(id, 'trip:payment_update', {
@@ -1333,8 +1387,8 @@ export class TripsService {
 			Number(priceConfig.pricePerKm) * distanceKm +
 			Number(priceConfig.pricePerMin) * estimatedMinutes;
 
-		subtotal = Math.max(Number(priceConfig.minFare), subtotal);
 		subtotal = subtotal * surgeMultiplier;
+		subtotal = Math.max(Number(priceConfig.minFare), subtotal);
 
 		let discountAmount = 0;
 		let couponId: string | undefined;
