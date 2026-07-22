@@ -2,6 +2,7 @@ import {
 	Injectable,
 	NotFoundException,
 	BadRequestException,
+	ForbiddenException,
 	ConflictException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
@@ -10,6 +11,7 @@ import {
 	PaymentStatus,
 	PaymentMethod,
 	TripStatus,
+	UserRole,
 	Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -374,7 +376,10 @@ export class FinancialTransactionsService {
 		};
 	}
 
-	async registerCashCollection(dto: RegisterCashCollectionDto) {
+	async registerCashCollection(
+		dto: RegisterCashCollectionDto,
+		actor: { id: string; role: UserRole },
+	) {
 		const trip = await this.prisma.client.trip.findUnique({
 			where: { id: dto.tripId },
 			select: {
@@ -411,6 +416,18 @@ export class FinancialTransactionsService {
 			throw new BadRequestException(
 				'O motorista não corresponde ao motorista da viagem',
 			);
+		}
+
+		if (actor.role === UserRole.DRIVER) {
+			const driver = await this.prisma.client.driver.findUnique({
+				where: { userId: actor.id },
+				select: { id: true },
+			});
+			if (!driver || driver.id !== dto.driverId) {
+				throw new ForbiddenException(
+					'Não podes registar recolha de cash para outro motorista',
+				);
+			}
 		}
 
 		const amount = dto.amount ?? Number(trip.totalPrice);

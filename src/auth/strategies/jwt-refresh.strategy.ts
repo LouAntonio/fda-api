@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -14,11 +15,18 @@ export class JwtRefreshStrategy extends PassportStrategy(
 	Strategy,
 	'jwt-refresh',
 ) {
-	constructor(private prisma: PrismaService) {
+	constructor(
+		private prisma: PrismaService,
+		configService: ConfigService,
+	) {
+		const secret = configService.get<string>('JWT_REFRESH_SECRET');
+		if (!secret) {
+			throw new Error('JWT_REFRESH_SECRET não definida no ambiente');
+		}
 		super({
 			jwtFromRequest: ExtractJwt.fromBodyField('refreshToken'),
 			ignoreExpiration: false,
-			secretOrKey: process.env.JWT_REFRESH_SECRET!,
+			secretOrKey: secret,
 		});
 	}
 

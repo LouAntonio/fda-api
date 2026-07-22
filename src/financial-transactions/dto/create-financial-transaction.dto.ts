@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsNumber, IsObject, Min } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	FinancialTransactionType,
@@ -95,5 +95,6 @@ export class CreateFinancialTransactionDto {
 		description: 'Metadados adicionais (JSON)',
 	})
 	@IsOptional()
+	@IsObject()
 	metadata?: Record<string, unknown>;
 }

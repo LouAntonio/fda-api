@@ -18,11 +18,12 @@ interface JwtPayload {
 
 type AuthenticatedSocket = Socket & { user: JwtPayload };
 
+const corsOrigin = (process.env.CORS_ORIGIN ?? '').trim();
 @WebSocketGateway({
 	namespace: '/trips',
 	cors: {
-		origin: process.env.CORS_ORIGIN
-			? process.env.CORS_ORIGIN.split(',')
+		origin: corsOrigin
+			? corsOrigin.split(',').filter(Boolean)
 			: ['http://localhost:5173', 'http://localhost:3000'],
 		credentials: true,
 	},

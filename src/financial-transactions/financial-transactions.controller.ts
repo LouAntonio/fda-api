@@ -7,9 +7,11 @@ import {
 	Param,
 	Body,
 	Query,
+	Req,
 	UseGuards,
 	ValidationPipe,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -117,8 +119,13 @@ export class FinancialTransactionsController {
 	@Post('cash-collection')
 	@Roles(UserRole.DRIVER, UserRole.SUPER_ADMIN, UserRole.OPERATIONS)
 	registerCashCollection(
+		@Req() req: Request,
 		@Body(ValidationPipe) dto: RegisterCashCollectionDto,
 	) {
-		return this.financialTransactionsService.registerCashCollection(dto);
+		const user = req.user as { id: string; role: UserRole };
+		return this.financialTransactionsService.registerCashCollection(
+			dto,
+			user,
+		);
 	}
 }
