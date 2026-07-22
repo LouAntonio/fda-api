@@ -426,6 +426,18 @@ export class DispatchProcessor extends WorkerHost {
 			this.logger.error(
 				`Failed to parse pickupCoords for trip ${tripId}: ${trip.pickupCoords}`,
 			);
+			await this.prisma.client.trip.update({
+				where: { id: tripId },
+				data: {
+					status: TripStatus.CANCELLED,
+					cancelledAt: new Date(),
+					cancelReason: 'Erro interno: coordenadas inválidas',
+				},
+			});
+			this.tripGateway.sendToUser(trip.clientId, 'trip:cancelled', {
+				tripId,
+				reason: 'Erro interno: coordenadas inválidas',
+			});
 			return;
 		}
 
