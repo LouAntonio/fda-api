@@ -81,11 +81,17 @@ export class WhatsappService implements OnModuleInit {
 		await this.resetSession();
 	}
 
+	private formatPhone(phoneNumber: string): string {
+		const raw = phoneNumber.replace(/[\s+]/g, '');
+		const full = raw.startsWith('244') ? raw : `244${raw}`;
+		return full + '@c.us';
+	}
+
 	async sendOTP(phoneNumber: string, code: string): Promise<void> {
 		if (!this.client) {
 			throw new BadRequestException('WhatsApp não está conectado');
 		}
-		const formatted = phoneNumber.replace(/[\s+]/g, '') + '@c.us';
+		const formatted = this.formatPhone(phoneNumber);
 		const message = `O teu código de verificação FDA é: ${code}\n\nVálido por 10 minutos. Não partilhes este código com ninguém.`;
 		await this.client.sendMessage(formatted, message);
 	}
@@ -94,7 +100,7 @@ export class WhatsappService implements OnModuleInit {
 		if (!this.client) {
 			throw new BadRequestException('WhatsApp não está conectado');
 		}
-		const formatted = phoneNumber.replace(/[\s+]/g, '') + '@c.us';
+		const formatted = this.formatPhone(phoneNumber);
 		await this.client.sendMessage(
 			formatted,
 			'Esta é uma mensagem de teste do painel FDA.',
