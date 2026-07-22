@@ -14,6 +14,7 @@ import { ListPriceConfigsDto } from './dto/list-price-configs.dto';
 const defaultPriceConfigSelect = {
 	id: true,
 	vehicleType: true,
+	serviceType: true,
 	baseFare: true,
 	pricePerKm: true,
 	pricePerMin: true,
@@ -35,13 +36,14 @@ export class PriceConfigService {
 		const existing = await this.prisma.client.priceConfig.findFirst({
 			where: {
 				vehicleType: dto.vehicleType,
+				serviceType: dto.serviceType ?? 'RIDE',
 				isActive: true,
 			},
 		});
 
 		if (existing) {
 			throw new ConflictException(
-				`Já existe uma configuração ativa para o tipo ${dto.vehicleType}`,
+				`Já existe uma configuração ativa para ${dto.vehicleType}/${dto.serviceType ?? 'RIDE'}`,
 			);
 		}
 
@@ -49,6 +51,7 @@ export class PriceConfigService {
 			data: {
 				id: uuidv7(),
 				vehicleType: dto.vehicleType,
+				serviceType: dto.serviceType ?? 'RIDE',
 				baseFare: dto.baseFare,
 				pricePerKm: dto.pricePerKm,
 				pricePerMin: dto.pricePerMin,
@@ -81,6 +84,10 @@ export class PriceConfigService {
 
 		if (dto.vehicleType) {
 			where.vehicleType = dto.vehicleType;
+		}
+
+		if (dto.serviceType) {
+			where.serviceType = dto.serviceType;
 		}
 
 		if (dto.isActive !== undefined) {
@@ -135,6 +142,7 @@ export class PriceConfigService {
 		const data: Record<string, unknown> = {};
 
 		if (dto.vehicleType !== undefined) data.vehicleType = dto.vehicleType;
+		if (dto.serviceType !== undefined) data.serviceType = dto.serviceType;
 		if (dto.baseFare !== undefined) data.baseFare = dto.baseFare;
 		if (dto.pricePerKm !== undefined) data.pricePerKm = dto.pricePerKm;
 		if (dto.pricePerMin !== undefined) data.pricePerMin = dto.pricePerMin;

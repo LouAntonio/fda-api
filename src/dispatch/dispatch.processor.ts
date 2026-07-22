@@ -60,6 +60,12 @@ export class DispatchProcessor extends WorkerHost {
 			`Dispatch attempt ${currentAttempt}/${MAX_DISPATCH_ATTEMPTS} for trip ${tripId}`,
 		);
 
+		this.tripGateway.sendToUser(clientId, 'trip:searching', {
+			tripId,
+			attempt: currentAttempt,
+			maxAttempts: MAX_DISPATCH_ATTEMPTS,
+		});
+
 		try {
 			await this.handleOfferTripInner(
 				job,
@@ -203,7 +209,7 @@ export class DispatchProcessor extends WorkerHost {
 					10000
 				)
 			ORDER BY distance_km ASC
-			LIMIT 1
+			LIMIT 5
 			`,
 			...sqlParams,
 		);
@@ -235,128 +241,117 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
-		const nearest = nearestDrivers[0];
+		let offeredCount = 0;
 
-		let driverUnavailable = false;
+		for (const driver of nearestDrivers) {
+			const assignment = await this.prisma.client.$transaction(
+				async (tx) => {
+					const [lockedTrip] = await tx.$queryRawUnsafe<
+						{ id: string; status: string }[]
+					>(
+						`SELECT id, status FROM "Trip" WHERE id = $1 FOR UPDATE`,
+						tripId,
+					);
 
-		const assignment = await this.prisma.client.$transaction(async (tx) => {
-			const [lockedTrip] = await tx.$queryRawUnsafe<
-				{ id: string; status: string }[]
-			>(`SELECT id, status FROM "Trip" WHERE id = $1 FOR UPDATE`, tripId);
+					if (
+						!lockedTrip ||
+						lockedTrip.status !== TripStatus.REQUESTED
+					) {
+						return null;
+					}
 
-			if (!lockedTrip || lockedTrip.status !== TripStatus.REQUESTED) {
-				return null;
-			}
+					const [lockedDriver] = await tx.$queryRawUnsafe<
+						{ id: string; availability: string }[]
+					>(
+						`SELECT id, availability FROM "Driver" WHERE id = $1 FOR UPDATE`,
+						driver.id,
+					);
 
-			const [lockedDriver] = await tx.$queryRawUnsafe<
-				{ id: string; availability: string }[]
-			>(
-				`SELECT id, availability FROM "Driver" WHERE id = $1 FOR UPDATE`,
-				nearest.id,
+					if (
+						!lockedDriver ||
+						lockedDriver.availability !== 'ONLINE'
+					) {
+						return null;
+					}
+
+					return tx.tripAssignment.create({
+						data: {
+							id: uuidv7(),
+							tripId,
+							driverId: driver.id,
+							status: TripAssignmentStatus.OFFERED,
+						},
+					});
+				},
 			);
 
-			if (!lockedDriver || lockedDriver.availability !== 'ONLINE') {
-				driverUnavailable = true;
-				return null;
+			if (!assignment) continue;
+
+			if (!this.tripGateway.hasActiveSocket(driver.userId)) {
+				await this.prisma.client.tripAssignment.update({
+					where: { id: assignment.id },
+					data: { status: TripAssignmentStatus.EXPIRED },
+				});
+				continue;
 			}
 
-			const existing = await tx.tripAssignment.findFirst({
-				where: {
-					tripId,
-					status: TripAssignmentStatus.OFFERED,
-				},
-				select: { id: true },
-			});
+			const offerData = {
+				assignmentId: assignment.id,
+				tripId,
+				pickupAddress: trip.pickupAddress,
+				dropoffAddress: trip.dropoffAddress,
+				estimatedDistanceKm: trip.estimatedDistanceKm,
+				estimatedDurationMin: trip.estimatedDurationMin,
+				totalPrice: trip.totalPrice,
+				driverId: driver.id,
+				driverName: driver.name,
+				pickupLat: driver.lat,
+				pickupLng: driver.lng,
+				vehicle: driver.vehicle,
+				offerTimeoutMs: DISPATCH_TIMEOUT_MS,
+			};
 
-			if (existing) {
-				this.logger.warn(
-					`Trip ${tripId} already has an active assignment ${existing.id}, skipping`,
-				);
-				return null;
-			}
+			this.tripGateway.sendToUser(driver.userId, 'trip:offer', offerData);
 
-			return tx.tripAssignment.create({
+			await this.expoPush.sendToUser(driver.userId, {
+				title: 'Nova solicitação de viagem',
+				body: `De ${trip.pickupAddress} para ${trip.dropoffAddress}`,
 				data: {
-					id: uuidv7(),
+					type: 'trip_offer',
 					tripId,
-					driverId: nearest.id,
-					status: TripAssignmentStatus.OFFERED,
+					assignmentId: assignment.id,
 				},
 			});
-		});
 
-		if (!assignment) {
-			if (driverUnavailable) {
-				this.logger.log(
-					`Driver ${nearest.id} is no longer available (caught in transaction), re-enqueueing dispatch`,
-				);
+			await this.dispatchService.enqueueDispatchTimeout({
+				tripId,
+				assignmentId: assignment.id,
+				clientId,
+				driverId: driver.id,
+				driverUserId: driver.userId,
+			});
+
+			offeredCount++;
+			this.logger.log(
+				`Offered trip ${tripId} to driver ${driver.id} (assignment ${assignment.id})`,
+			);
+		}
+
+		if (offeredCount === 0) {
+			this.logger.log(
+				`No drivers could be offered trip ${tripId}, re-enqueueing (attempt ${currentAttempt}/${MAX_DISPATCH_ATTEMPTS})`,
+			);
+			if (currentAttempt < MAX_DISPATCH_ATTEMPTS) {
 				await this.dispatchService.enqueueOfferTrip({
 					...job.data,
 					excludedDriverIds: [
 						...(excludedDriverIds ?? []),
-						nearest.id,
+						...nearestDrivers.map((d) => d.id),
 					],
 					attempt: currentAttempt + 1,
 				});
 			}
-			return;
 		}
-
-		if (!this.tripGateway.hasActiveSocket(nearest.userId)) {
-			this.logger.log(
-				`Driver ${nearest.id} has no active WebSocket, skipping offer and re-enqueueing`,
-			);
-			await this.prisma.client.tripAssignment.update({
-				where: { id: assignment.id },
-				data: { status: TripAssignmentStatus.EXPIRED },
-			});
-			await this.dispatchService.enqueueOfferTrip({
-				...job.data,
-				excludedDriverIds: [...(excludedDriverIds ?? []), nearest.id],
-				attempt: currentAttempt + 1,
-			});
-			return;
-		}
-
-		const offerData = {
-			assignmentId: assignment.id,
-			tripId,
-			pickupAddress: trip.pickupAddress,
-			dropoffAddress: trip.dropoffAddress,
-			estimatedDistanceKm: trip.estimatedDistanceKm,
-			estimatedDurationMin: trip.estimatedDurationMin,
-			totalPrice: trip.totalPrice,
-			driverId: nearest.id,
-			driverName: nearest.name,
-			pickupLat: nearest.lat,
-			pickupLng: nearest.lng,
-			vehicle: nearest.vehicle,
-			offerTimeoutMs: DISPATCH_TIMEOUT_MS,
-		};
-
-		this.tripGateway.sendToUser(nearest.userId, 'trip:offer', offerData);
-
-		await this.expoPush.sendToUser(nearest.userId, {
-			title: 'Nova solicitação de viagem',
-			body: `De ${trip.pickupAddress} para ${trip.dropoffAddress}`,
-			data: {
-				type: 'trip_offer',
-				tripId,
-				assignmentId: assignment.id,
-			},
-		});
-
-		await this.dispatchService.enqueueDispatchTimeout({
-			tripId,
-			assignmentId: assignment.id,
-			clientId,
-			driverId: nearest.id,
-			driverUserId: nearest.userId,
-		});
-
-		this.logger.log(
-			`Offered trip ${tripId} to driver ${nearest.id} (assignment ${assignment.id})`,
-		);
 	}
 
 	private async handleDispatchTimeout(job: Job<DispatchTimeoutJobData>) {

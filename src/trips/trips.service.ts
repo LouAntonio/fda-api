@@ -20,6 +20,7 @@ import { CouponsService } from '../coupons/coupons.service';
 import { TripGatewayService } from '../trip-gateway/trip-gateway.service';
 import { DispatchService } from '../dispatch/dispatch.service';
 import { ExpoPushService } from '../notifications/expo-push.service';
+import { MapboxService } from '../common/services/mapbox.service';
 import { CreateTripDto, CoordsDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { ListTripsDto } from './dto/list-trips.dto';
@@ -116,7 +117,7 @@ const deliveryStatusTransitions: Record<DeliveryStatus, DeliveryStatus[]> = {
 const statusTimestampField: Record<TripStatus, string> = {
 	[TripStatus.REQUESTED]: 'requestedAt',
 	[TripStatus.ACCEPTED]: 'acceptedAt',
-	[TripStatus.PICKUP_IN_PROGRESS]: 'startedAt',
+	[TripStatus.PICKUP_IN_PROGRESS]: 'arrivedAtPickup',
 	[TripStatus.STARTED]: 'startedAt',
 	[TripStatus.COMPLETED]: 'completedAt',
 	[TripStatus.CANCELLED]: 'cancelledAt',
@@ -137,6 +138,7 @@ export class TripsService {
 		private tripGateway: TripGatewayService,
 		private dispatchService: DispatchService,
 		private expoPush: ExpoPushService,
+		private mapboxService: MapboxService,
 	) {}
 
 	async create(dto: CreateTripDto, userId: string, userRole: UserRole) {
@@ -166,6 +168,7 @@ export class TripsService {
 			pickupCoords: dto.pickupCoords,
 			dropoffCoords: dto.dropoffCoords,
 			vehicleType: dto.vehicleType,
+			serviceType: dto.serviceType,
 			couponCode: dto.couponCode,
 			userId: clientId,
 		});
@@ -745,12 +748,13 @@ export class TripsService {
 			let actualPickupCoords: string | undefined;
 			let actualDropoffCoords: string | undefined;
 			try {
-				actualDurationMin = trip.startedAt
+				const durationStart = trip.arrivedAtPickup ?? trip.startedAt;
+				actualDurationMin = durationStart
 					? Math.max(
 							1,
 							Math.round(
 								(new Date().getTime() -
-									new Date(trip.startedAt).getTime()) /
+									new Date(durationStart).getTime()) /
 									60000,
 							),
 						)
@@ -832,7 +836,8 @@ export class TripsService {
 						serviceFee: round(serviceFee, 2),
 						driverEarnings: round(driverEarnings, 2),
 						totalPrice: round(totalPrice, 2),
-						paymentStatus: 'PAID',
+						paymentStatus:
+							trip.paymentMethod === 'CASH' ? 'PENDING' : 'PAID',
 					});
 
 					await this.prisma.client.$transaction(async (tx) => {
@@ -1277,6 +1282,7 @@ export class TripsService {
 			pickupCoords: dto.pickupCoords,
 			dropoffCoords: dto.dropoffCoords,
 			vehicleType: dto.vehicleType,
+			serviceType: dto.serviceType,
 		});
 
 		return {
@@ -1390,12 +1396,14 @@ export class TripsService {
 		pickupCoords: CoordsDto;
 		dropoffCoords: CoordsDto;
 		vehicleType: VehicleType;
+		serviceType?: ServiceType;
 		couponCode?: string;
 		userId?: string;
 	}) {
 		const priceConfig = await this.prisma.client.priceConfig.findFirst({
 			where: {
 				vehicleType: params.vehicleType,
+				serviceType: params.serviceType ?? 'RIDE',
 				isActive: true,
 			},
 		});
@@ -1406,14 +1414,28 @@ export class TripsService {
 			);
 		}
 
-		const distanceKm = distanceInKm(
-			params.pickupCoords.lat,
-			params.pickupCoords.lng,
-			params.dropoffCoords.lat,
-			params.dropoffCoords.lng,
-		);
+		let distanceKm: number;
+		let estimatedMinutes: number;
 
-		const estimatedMinutes = Math.max(1, Math.ceil((distanceKm / 30) * 60));
+		try {
+			const route = await this.mapboxService.getRoute({
+				pickupLat: params.pickupCoords.lat,
+				pickupLng: params.pickupCoords.lng,
+				dropoffLat: params.dropoffCoords.lat,
+				dropoffLng: params.dropoffCoords.lng,
+				vehicleType: params.vehicleType,
+			});
+			distanceKm = route.distanceKm;
+			estimatedMinutes = route.durationMin;
+		} catch {
+			distanceKm = distanceInKm(
+				params.pickupCoords.lat,
+				params.pickupCoords.lng,
+				params.dropoffCoords.lat,
+				params.dropoffCoords.lng,
+			);
+			estimatedMinutes = Math.max(1, Math.ceil((distanceKm / 30) * 60));
+		}
 
 		const pickupZone = await this.findZoneForCoords(
 			params.pickupCoords.lat,

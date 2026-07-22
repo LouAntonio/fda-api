@@ -1,5 +1,5 @@
-import { IsEnum } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TripAssignmentStatus } from '@prisma/client';
 
 export class UpdateTripAssignmentDto {
@@ -9,4 +9,11 @@ export class UpdateTripAssignmentDto {
 	})
 	@IsEnum(TripAssignmentStatus)
 	status!: TripAssignmentStatus;
+
+	@ApiPropertyOptional({
+		description: 'Motivo da rejeição (opcional, apenas para REJECTED)',
+	})
+	@IsOptional()
+	@IsString()
+	rejectReason?: string;
 }

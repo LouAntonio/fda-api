@@ -280,6 +280,7 @@ export class TripAssignmentsService {
 				assignmentId: id,
 				tripId: trip.id,
 				driverId: driver.id,
+				rejectReason: dto.rejectReason ?? null,
 			});
 		}
 

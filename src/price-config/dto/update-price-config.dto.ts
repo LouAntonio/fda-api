@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { VehicleType } from '@prisma/client';
+import { VehicleType, ServiceType } from '@prisma/client';
 
 export class UpdatePriceConfigDto {
 	@ApiPropertyOptional({
@@ -10,6 +10,14 @@ export class UpdatePriceConfigDto {
 	@IsOptional()
 	@IsEnum(VehicleType)
 	vehicleType?: VehicleType;
+
+	@ApiPropertyOptional({
+		enum: ServiceType,
+		description: 'Tipo de serviço (RIDE ou DELIVERY)',
+	})
+	@IsOptional()
+	@IsEnum(ServiceType)
+	serviceType?: ServiceType;
 
 	@ApiPropertyOptional({ example: 150, description: 'Taxa base (Kz)' })
 	@IsOptional()

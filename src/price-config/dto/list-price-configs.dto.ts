@@ -1,6 +1,6 @@
 import { IsOptional, IsString, IsInt, Min, Max, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
-import { VehicleType } from '@prisma/client';
+import { VehicleType, ServiceType } from '@prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ListPriceConfigsDto {
@@ -30,18 +30,26 @@ export class ListPriceConfigsDto {
 	@IsEnum(VehicleType)
 	vehicleType?: VehicleType;
 
+	@ApiPropertyOptional({
+		enum: ServiceType,
+		description: 'Filtrar por tipo de serviço',
+	})
+	@IsOptional()
+	@IsEnum(ServiceType)
+	serviceType?: ServiceType;
+
 	@ApiPropertyOptional({ description: 'Filtrar por ativo/inativo' })
 	@IsOptional()
 	@Type(() => Boolean)
 	isActive?: boolean;
 
 	@ApiPropertyOptional({
-		enum: ['vehicleType', 'baseFare', 'createdAt'],
+		enum: ['vehicleType', 'serviceType', 'baseFare', 'createdAt'],
 		description: 'Campo para ordenar',
 	})
 	@IsOptional()
 	@IsString()
-	sortBy?: 'vehicleType' | 'baseFare' | 'createdAt';
+	sortBy?: 'vehicleType' | 'serviceType' | 'baseFare' | 'createdAt';
 
 	@ApiPropertyOptional({
 		enum: ['asc', 'desc'],
