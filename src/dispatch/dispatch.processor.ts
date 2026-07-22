@@ -255,10 +255,7 @@ export class DispatchProcessor extends WorkerHost {
 				nearest.id,
 			);
 
-			if (
-				!lockedDriver ||
-				lockedDriver.availability !== 'ONLINE'
-			) {
+			if (!lockedDriver || lockedDriver.availability !== 'ONLINE') {
 				driverUnavailable = true;
 				return null;
 			}
@@ -315,10 +312,7 @@ export class DispatchProcessor extends WorkerHost {
 			});
 			await this.dispatchService.enqueueOfferTrip({
 				...job.data,
-				excludedDriverIds: [
-					...(excludedDriverIds ?? []),
-					nearest.id,
-				],
+				excludedDriverIds: [...(excludedDriverIds ?? []), nearest.id],
 				attempt: currentAttempt + 1,
 			});
 			return;

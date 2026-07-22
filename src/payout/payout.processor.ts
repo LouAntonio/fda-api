@@ -61,7 +61,9 @@ export class PayoutProcessor extends WorkerHost {
 			});
 		});
 
-		this.logger.log(`Payout processed for driver ${driverId}: ${amount} Kz`);
+		this.logger.log(
+			`Payout processed for driver ${driverId}: ${amount} Kz`,
+		);
 	}
 
 	private async handleProcessBatch() {

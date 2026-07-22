@@ -444,9 +444,7 @@ export class FinancialTransactionsService {
 					!lockedTrip ||
 					lockedTrip.paymentStatus === PaymentStatus.PAID
 				) {
-					throw new BadRequestException(
-						'Esta viagem já foi paga',
-					);
+					throw new BadRequestException('Esta viagem já foi paga');
 				}
 
 				const t = await tx.financialTransaction.create({

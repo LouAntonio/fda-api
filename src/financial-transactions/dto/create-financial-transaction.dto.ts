@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsObject, Min } from 'class-validator';
+import {
+	IsString,
+	IsOptional,
+	IsEnum,
+	IsNumber,
+	IsObject,
+	Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
 	FinancialTransactionType,

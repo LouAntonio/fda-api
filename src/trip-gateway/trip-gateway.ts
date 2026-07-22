@@ -133,10 +133,7 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 			select: { clientId: true, driverId: true },
 		});
 		const userId = client.user.sub;
-		if (
-			!trip ||
-			(trip.clientId !== userId && trip.driverId !== userId)
-		) {
+		if (!trip || (trip.clientId !== userId && trip.driverId !== userId)) {
 			client.emit('error', {
 				message: 'Não tem permissão para subscrever esta viagem',
 			});

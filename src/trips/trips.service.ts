@@ -590,25 +590,20 @@ export class TripsService {
 		}
 
 		if (dto.actualDistanceKm !== undefined && trip.priceConfigId) {
-			const priceConfig =
-				await this.prisma.client.priceConfig.findUnique({
+			const priceConfig = await this.prisma.client.priceConfig.findUnique(
+				{
 					where: { id: trip.priceConfigId },
-				});
+				},
+			);
 			if (priceConfig) {
 				const actualDuration =
-					dto.actualDurationMin ??
-					trip.estimatedDurationMin ??
-					1;
+					dto.actualDurationMin ?? trip.estimatedDurationMin ?? 1;
 				let subtotal =
 					Number(priceConfig.baseFare) +
-					Number(priceConfig.pricePerKm) *
-						dto.actualDistanceKm +
+					Number(priceConfig.pricePerKm) * dto.actualDistanceKm +
 					Number(priceConfig.pricePerMin) * actualDuration;
 				subtotal = subtotal * Number(trip.surgeMultiplierApplied ?? 1);
-				subtotal = Math.max(
-					Number(priceConfig.minFare),
-					subtotal,
-				);
+				subtotal = Math.max(Number(priceConfig.minFare), subtotal);
 				subtotal = Math.max(
 					0,
 					subtotal - Number(trip.discountAmount ?? 0),

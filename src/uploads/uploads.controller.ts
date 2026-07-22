@@ -35,10 +35,7 @@ export class UploadsController {
 	@UseGuards(JwtAuthGuard)
 	@Post('signature')
 	getSignature(@Body(ValidationPipe) dto: SignatureDto) {
-		const folder = dto.folder?.replace(
-			/^[^/]+/,
-			(m) => m.toUpperCase(),
-		);
+		const folder = dto.folder?.replace(/^[^/]+/, (m) => m.toUpperCase());
 		if (folder && !ALLOWED_FOLDERS.includes(folder)) {
 			throw new BadRequestException(
 				`Pasta não permitida. Pastas válidas: ${ALLOWED_FOLDERS.join(', ')}`,
