@@ -237,27 +237,7 @@ export class DispatchProcessor extends WorkerHost {
 
 		const nearest = nearestDrivers[0];
 
-		const driverStillAvailable = await this.prisma.client.driver.findUnique(
-			{
-				where: { id: nearest.id },
-				select: { availability: true },
-			},
-		);
-
-		if (
-			!driverStillAvailable ||
-			driverStillAvailable.availability !== 'ONLINE'
-		) {
-			this.logger.log(
-				`Driver ${nearest.id} is no longer available, re-enqueueing dispatch`,
-			);
-			await this.dispatchService.enqueueOfferTrip({
-				...job.data,
-				excludedDriverIds: [...(excludedDriverIds ?? []), nearest.id],
-				attempt: currentAttempt + 1,
-			});
-			return;
-		}
+		let driverUnavailable = false;
 
 		const assignment = await this.prisma.client.$transaction(async (tx) => {
 			const [lockedTrip] = await tx.$queryRawUnsafe<
@@ -265,6 +245,21 @@ export class DispatchProcessor extends WorkerHost {
 			>(`SELECT id, status FROM "Trip" WHERE id = $1 FOR UPDATE`, tripId);
 
 			if (!lockedTrip || lockedTrip.status !== TripStatus.REQUESTED) {
+				return null;
+			}
+
+			const [lockedDriver] = await tx.$queryRawUnsafe<
+				{ id: string; availability: string }[]
+			>(
+				`SELECT id, availability FROM "Driver" WHERE id = $1 FOR UPDATE`,
+				nearest.id,
+			);
+
+			if (
+				!lockedDriver ||
+				lockedDriver.availability !== 'ONLINE'
+			) {
+				driverUnavailable = true;
 				return null;
 			}
 
@@ -294,6 +289,19 @@ export class DispatchProcessor extends WorkerHost {
 		});
 
 		if (!assignment) {
+			if (driverUnavailable) {
+				this.logger.log(
+					`Driver ${nearest.id} is no longer available (caught in transaction), re-enqueueing dispatch`,
+				);
+				await this.dispatchService.enqueueOfferTrip({
+					...job.data,
+					excludedDriverIds: [
+						...(excludedDriverIds ?? []),
+						nearest.id,
+					],
+					attempt: currentAttempt + 1,
+				});
+			}
 			return;
 		}
 

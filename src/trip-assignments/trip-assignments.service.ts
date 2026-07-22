@@ -373,6 +373,11 @@ export class TripAssignmentsService {
 				},
 			});
 
+			await tx.driver.update({
+				where: { id: driver.id },
+				data: { availability: 'BUSY' },
+			});
+
 			await tx.tripAssignment.updateMany({
 				where: {
 					tripId: trip.id,

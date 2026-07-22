@@ -395,7 +395,8 @@ export class DriversController {
 		description:
 			'Adiciona um documento ao motorista (fileUrl do Cloudinary)',
 	})
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.VALIDATOR)
 	@Post(':id/documents')
 	async uploadDocument(
 		@Param('id') id: string,
@@ -409,7 +410,8 @@ export class DriversController {
 		summary: 'Listar documentos',
 		description: 'Lista os documentos do motorista',
 	})
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.VALIDATOR)
 	@Get(':id/documents')
 	listDocuments(@Param('id') id: string) {
 		return this.driversService.listDocuments(id);
@@ -420,7 +422,8 @@ export class DriversController {
 		summary: 'Obter documento',
 		description: 'Retorna um documento específico',
 	})
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.VALIDATOR)
 	@Get(':id/documents/:documentId')
 	getDocument(
 		@Param('id') id: string,
@@ -450,7 +453,8 @@ export class DriversController {
 		summary: 'Remover documento',
 		description: 'Remove um documento e apaga o ficheiro do Cloudinary',
 	})
-	@UseGuards(JwtAuthGuard)
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(UserRole.SUPER_ADMIN, UserRole.OPERATIONS, UserRole.VALIDATOR)
 	@Delete(':id/documents/:documentId')
 	async deleteDocument(
 		@Param('id') id: string,

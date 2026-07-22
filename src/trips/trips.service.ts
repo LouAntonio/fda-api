@@ -795,14 +795,17 @@ export class TripsService {
 						},
 					});
 
+					const driverUpdateData1: Prisma.DriverUpdateInput = {
+						completedTripsCount: { increment: 1 },
+					};
+					if (trip.paymentMethod !== 'CASH') {
+						driverUpdateData1.availableBalance = {
+							increment: round(driverEarnings, 2),
+						};
+					}
 					await this.prisma.client.driver.update({
 						where: { id: trip.driverId },
-						data: {
-							completedTripsCount: { increment: 1 },
-							availableBalance: {
-								increment: round(driverEarnings, 2),
-							},
-						},
+						data: driverUpdateData1,
 					});
 				} else {
 					await this.prisma.client.trip.update({
@@ -810,14 +813,17 @@ export class TripsService {
 						data: baseTripUpdate,
 					});
 
+					const driverUpdateData2: Prisma.DriverUpdateInput = {
+						completedTripsCount: { increment: 1 },
+					};
+					if (trip.paymentMethod !== 'CASH') {
+						driverUpdateData2.availableBalance = {
+							increment: Number(trip.driverEarnings ?? 0),
+						};
+					}
 					await this.prisma.client.driver.update({
 						where: { id: trip.driverId },
-						data: {
-							completedTripsCount: { increment: 1 },
-							availableBalance: {
-								increment: Number(trip.driverEarnings ?? 0),
-							},
-						},
+						data: driverUpdateData2,
 					});
 				}
 			} catch (err: unknown) {
@@ -843,14 +849,17 @@ export class TripsService {
 								: String(innerErr),
 						),
 					);
+				const driverUpdateData3: Prisma.DriverUpdateInput = {
+					completedTripsCount: { increment: 1 },
+				};
+				if (trip.paymentMethod !== 'CASH') {
+					driverUpdateData3.availableBalance = {
+						increment: Number(trip.driverEarnings ?? 0),
+					};
+				}
 				await this.prisma.client.driver.update({
 					where: { id: trip.driverId },
-					data: {
-						completedTripsCount: { increment: 1 },
-						availableBalance: {
-							increment: Number(trip.driverEarnings ?? 0),
-						},
-					},
+					data: driverUpdateData3,
 				});
 			}
 		}
