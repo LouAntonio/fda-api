@@ -305,6 +305,25 @@ export class DispatchProcessor extends WorkerHost {
 			return;
 		}
 
+		if (!this.tripGateway.hasActiveSocket(nearest.userId)) {
+			this.logger.log(
+				`Driver ${nearest.id} has no active WebSocket, skipping offer and re-enqueueing`,
+			);
+			await this.prisma.client.tripAssignment.update({
+				where: { id: assignment.id },
+				data: { status: TripAssignmentStatus.EXPIRED },
+			});
+			await this.dispatchService.enqueueOfferTrip({
+				...job.data,
+				excludedDriverIds: [
+					...(excludedDriverIds ?? []),
+					nearest.id,
+				],
+				attempt: currentAttempt + 1,
+			});
+			return;
+		}
+
 		const offerData = {
 			assignmentId: assignment.id,
 			tripId,

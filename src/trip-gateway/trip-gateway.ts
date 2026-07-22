@@ -7,6 +7,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 interface JwtPayload {
 	sub: string;
@@ -25,12 +27,22 @@ type AuthenticatedSocket = Socket & { user: JwtPayload };
 		credentials: true,
 	},
 })
+@Injectable()
 export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
+	private readonly logger = new Logger(TripGateway.name);
+
 	@WebSocketServer()
 	server!: Server;
 
 	private userSockets = new Map<string, Set<string>>();
 	private clientRooms = new Map<string, Set<string>>();
+
+	constructor(private prisma: PrismaService) {}
+
+	hasActiveSocket(userId: string): boolean {
+		const sockets = this.userSockets.get(userId);
+		return !!sockets && sockets.size > 0;
+	}
 
 	handleConnection(client: AuthenticatedSocket) {
 		try {
@@ -77,10 +89,36 @@ export class TripGateway implements OnGatewayConnection, OnGatewayDisconnect {
 				sockets.delete(client.id);
 				if (sockets.size === 0) {
 					this.userSockets.delete(user.sub);
+					if (user.role === 'DRIVER') {
+						this.markDriverOffline(user.sub);
+					}
 				}
 			}
 		}
 		this.clientRooms.delete(client.id);
+	}
+
+	private async markDriverOffline(userId: string) {
+		try {
+			const driver = await this.prisma.client.driver.findFirst({
+				where: { userId, deletedAt: null },
+				select: { id: true, availability: true },
+			});
+			if (driver && driver.availability === 'ONLINE') {
+				await this.prisma.client.driver.update({
+					where: { id: driver.id },
+					data: { availability: 'OFFLINE' },
+				});
+				this.logger.log(
+					`Driver ${driver.id} auto-set to OFFLINE (WebSocket disconnected)`,
+				);
+			}
+		} catch (error) {
+			this.logger.error(
+				`Failed to mark driver ${userId} offline on disconnect`,
+				error instanceof Error ? error.message : String(error),
+			);
+		}
 	}
 
 	@SubscribeMessage('join:trip')

@@ -71,4 +71,8 @@ export class TripGatewayService {
 			updatedAt: new Date().toISOString(),
 		});
 	}
+
+	hasActiveSocket(userId: string): boolean {
+		return this.gateway.hasActiveSocket(userId);
+	}
 }
