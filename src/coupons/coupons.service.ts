@@ -362,6 +362,7 @@ export class CouponsService {
 				discountValue: true,
 				maxDiscount: true,
 				minTripAmount: true,
+				serviceType: true,
 				startsAt: true,
 				expiresAt: true,
 				isActive: true,
