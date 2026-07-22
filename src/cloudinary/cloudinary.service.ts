@@ -28,7 +28,7 @@ export class CloudinaryService {
 		});
 	}
 
-	getUploadSignature(folder?: string) {
+	getUploadSignature(folder?: string, allowedFormats?: string[]) {
 		const timestamp = Math.round(Date.now() / 1000);
 		const folderPath = folder ?? this.defaultFolder;
 
@@ -36,6 +36,10 @@ export class CloudinaryService {
 			timestamp,
 			folder: folderPath,
 		};
+
+		if (allowedFormats?.length) {
+			params.allowed_formats = allowedFormats.join(',');
+		}
 
 		const signature = cloudinary.utils.api_sign_request(
 			params,

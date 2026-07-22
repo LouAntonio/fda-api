@@ -21,6 +21,14 @@ const ALLOWED_FOLDERS = [
 	'FDA/events',
 ];
 
+const FOLDER_MIME_MAP: Record<string, string[]> = {
+	'FDA/profiles': ['jpg', 'jpeg', 'png'],
+	'FDA/vehicles': ['jpg', 'jpeg', 'png'],
+	'FDA/documents': ['jpg', 'jpeg', 'png', 'pdf'],
+	'FDA/invoices': ['jpg', 'jpeg', 'png', 'pdf'],
+	'FDA/events': ['jpg', 'jpeg', 'png'],
+};
+
 @ApiTags('Uploads')
 @Controller('uploads')
 export class UploadsController {
@@ -35,15 +43,23 @@ export class UploadsController {
 	@UseGuards(JwtAuthGuard)
 	@Post('signature')
 	getSignature(@Body(ValidationPipe) dto: SignatureDto) {
-		const folder = dto.folder?.replace(/^[^/]+/, (m) => m.toUpperCase());
-		if (folder && !ALLOWED_FOLDERS.includes(folder)) {
+		const rawFolder = dto.folder?.replace(/^[^/]+/, (m) => m.toUpperCase());
+		if (rawFolder && !ALLOWED_FOLDERS.includes(rawFolder)) {
 			throw new BadRequestException(
 				`Pasta não permitida. Pastas válidas: ${ALLOWED_FOLDERS.join(', ')}`,
 			);
 		}
 
+		const resolvedFolder = dto.folder ?? 'FDA/events';
+		const allowedFormats = FOLDER_MIME_MAP[resolvedFolder] ?? [
+			'jpg',
+			'jpeg',
+			'png',
+		];
+
 		const data = this.cloudinary.getUploadSignature(
-			dto.folder ?? 'FDA/events',
+			resolvedFolder,
+			allowedFormats,
 		);
 
 		return {

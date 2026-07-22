@@ -27,10 +27,27 @@ export class HttpExceptionFilter implements ExceptionFilter {
 				? exception.message
 				: 'Erro interno do servidor';
 
-		const body =
+		const sensitiveFields = [
+			'password',
+			'currentPassword',
+			'newPassword',
+			'refreshToken',
+		];
+		const logBody =
 			status >= 400 && status < 500 && request.body
-				? ` — Body: ${JSON.stringify(request.body)}`
-				: '';
+				? Object.fromEntries(
+						Object.entries(
+							request.body as Record<string, unknown>,
+						).map(([k, v]) =>
+							sensitiveFields.includes(k)
+								? [k, '[REDACTED]']
+								: [k, v],
+						),
+					)
+				: {};
+		const body = Object.keys(logBody).length
+			? ` — Body: ${JSON.stringify(logBody)}`
+			: '';
 
 		if (status >= 500) {
 			this.logger.error(

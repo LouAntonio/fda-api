@@ -33,6 +33,18 @@ async function bootstrap() {
 		SwaggerModule.setup('docs', app, document);
 	}
 
+	const jwtSecret = process.env.JWT_SECRET;
+	if (
+		jwtSecret === 'your-super-secret-key-change-in-production' ||
+		jwtSecret === 'your-refresh-secret-key-change-in-production' ||
+		!jwtSecret
+	) {
+		logger.warn(
+			'JWT_SECRET está com o valor padrão ou vazio — use uma chave segura em produção',
+			'Bootstrap',
+		);
+	}
+
 	const port = process.env.PORT ?? 3000;
 	await app.listen(port);
 	logger.log(`Application running on port ${port}`, 'Bootstrap');

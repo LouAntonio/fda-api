@@ -27,19 +27,20 @@ import { UpdateSupportTicketDto } from './dto/update-support-ticket.dto';
 export class SupportController {
 	constructor(private supportService: SupportService) {}
 
+	@ApiBearerAuth()
 	@ApiOperation({
 		summary: 'Enviar mensagem de contacto',
-		description:
-			'Recebe uma mensagem do formulário de contacto/suporte (autenticado ou não)',
+		description: 'Recebe uma mensagem do formulário de contacto/suporte',
 	})
+	@UseGuards(JwtAuthGuard)
 	@Throttle({ default: { limit: 5, ttl: 60000 } })
 	@Post('contact')
 	create(
 		@Body(ValidationPipe) dto: CreateSupportTicketDto,
 		@Req() req: Request,
 	) {
-		const user = req.user as { id: string } | undefined;
-		return this.supportService.create(user?.id, dto);
+		const user = req.user as { id: string };
+		return this.supportService.create(user.id, dto);
 	}
 
 	@ApiBearerAuth()
