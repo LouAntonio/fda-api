@@ -1,21 +1,21 @@
 services:
-  fda-api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-    container_name: fda-api
-    restart: unless-stopped
-    init: true
-    expose:
-      - "3000"
-    env_file:
-      - .env
-    networks:
-      - kuzuela
+    fda-api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+                DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+        container_name: fda-api
+        restart: unless-stopped
+        init: true
+        expose:
+            - '3000'
+        env_file:
+            - .env
+        networks:
+            - kuzuela
 
 networks:
-  kuzuela:
-    external: true
-    name: kuzuela
+    kuzuela:
+        external: true
+        name: kuzuela
