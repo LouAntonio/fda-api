@@ -242,8 +242,13 @@ export class DispatchProcessor extends WorkerHost {
 		}
 
 		let offeredCount = 0;
+		const driversToExclude: string[] = [];
 
 		for (const driver of nearestDrivers) {
+			if (!this.tripGateway.hasActiveSocket(driver.userId)) {
+				continue;
+			}
+
 			const assignment = await this.prisma.client.$transaction(
 				async (tx) => {
 					const [lockedTrip] = await tx.$queryRawUnsafe<
@@ -271,6 +276,7 @@ export class DispatchProcessor extends WorkerHost {
 						!lockedDriver ||
 						lockedDriver.availability !== 'ONLINE'
 					) {
+						driversToExclude.push(driver.id);
 						return null;
 					}
 
@@ -346,7 +352,7 @@ export class DispatchProcessor extends WorkerHost {
 					...job.data,
 					excludedDriverIds: [
 						...(excludedDriverIds ?? []),
-						...nearestDrivers.map((d) => d.id),
+						...driversToExclude,
 					],
 					attempt: currentAttempt + 1,
 				});

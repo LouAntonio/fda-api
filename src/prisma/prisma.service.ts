@@ -5,7 +5,13 @@ import { PrismaPg } from '@prisma/adapter-pg';
 function createExtendedClient() {
 	const adapter = new PrismaPg(process.env.DATABASE_URL!);
 
-	return new PrismaClient({ adapter });
+	return new PrismaClient({
+		adapter,
+		transactionOptions: {
+			maxWait: 20_000,
+			timeout: 20_000,
+		},
+	});
 }
 
 export type ExtendedPrismaClient = PrismaClient;
